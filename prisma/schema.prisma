@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  TRAINER
+  CLIENT
+}
+
+enum MeasurementUnit {
+  KG
+  LBS
+  CM
+  INCH
+}
+
+model Profile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  role      Role
+  name      String
+  email     String   @unique
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Trainer relations
+  clients         ClientTrainer[] @relation("TrainerClients")
+  mealPlans       MealPlan[]
+  trainingPlans   TrainingPlan[]
+
+  // Client relations
+  trainerRelation ClientTrainer?  @relation("ClientProfile")
+  weightLogs      WeightLog[]
+  measurements    Measurement[]
+  foodLogs        FoodLog[]
+  workoutLogs     WorkoutLog[]
+  assignedMealPlan    MealPlanAssignment[]
+  assignedTrainingPlan TrainingPlanAssignment[]
+
+  @@map("profiles")
+}
+
+model ClientTrainer {
+  id        String   @id @default(cuid())
+  client    Profile  @relation("ClientProfile", fields: [clientId], references: [id])
+  clientId  String   @unique @map("client_id")
+  trainer   Profile  @relation("TrainerClients", fields: [trainerId], references: [id])
+  trainerId String   @map("trainer_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("client_trainer")
+}
+
+// ─── Weight & Measurements ───────────────────────────────────────────
+
+model WeightLog {
+  id        String   @id @default(cuid())
+  profile   Profile  @relation(fields: [profileId], references: [id])
+  profileId String   @map("profile_id")
+  weight    Float
+  unit      MeasurementUnit @default(KG)
+  note      String?
+  loggedAt  DateTime @default(now()) @map("logged_at")
+
+  @@map("weight_logs")
+}
+
+model Measurement {
+  id        String   @id @default(cuid())
+  profile   Profile  @relation(fields: [profileId], references: [id])
+  profileId String   @map("profile_id")
+  chest     Float?
+  waist     Float?
+  hips      Float?
+  thigh     Float?
+  arm       Float?
+  calf      Float?
+  neck      Float?
+  unit      MeasurementUnit @default(CM)
+  note      String?
+  loggedAt  DateTime @default(now()) @map("logged_at")
+
+  @@map("measurements")
+}
+
+// ─── Food & Nutrition ────────────────────────────────────────────────
+
+model Food {
+  id          String  @id @default(cuid())
+  name        String
+  calories    Float
+  protein     Float
+  carbs       Float
+  fat         Float
+  servingSize Float   @default(100) @map("serving_size")
+  unit        String  @default("g")
+
+  foodLogItems FoodLogItem[]
+  mealItems    MealItem[]
+
+  @@map("foods")
+}
+
+model FoodLog {
+  id        String        @id @default(cuid())
+  profile   Profile       @relation(fields: [profileId], references: [id])
+  profileId String        @map("profile_id")
+  date      DateTime      @db.Date
+  items     FoodLogItem[]
+  note      String?
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@map("food_logs")
+}
+
+model FoodLogItem {
+  id        String  @id @default(cuid())
+  foodLog   FoodLog @relation(fields: [foodLogId], references: [id])
+  foodLogId String  @map("food_log_id")
+  food      Food    @relation(fields: [foodId], references: [id])
+  foodId    String  @map("food_id")
+  amount    Float
+  mealType  String  @map("meal_type") // breakfast, lunch, dinner, snack
+
+  @@map("food_log_items")
+}
+
+// ─── Meal Plans ──────────────────────────────────────────────────────
+
+model MealPlan {
+  id          String   @id @default(cuid())
+  trainer     Profile  @relation(fields: [trainerId], references: [id])
+  trainerId   String   @map("trainer_id")
+  name        String
+  description String?
+  days        MealPlanDay[]
+  assignments MealPlanAssignment[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("meal_plans")
+}
+
+model MealPlanDay {
+  id         String   @id @default(cuid())
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id])
+  mealPlanId String   @map("meal_plan_id")
+  dayNumber  Int      @map("day_number") // 1-7
+  meals      Meal[]
+
+  @@map("meal_plan_days")
+}
+
+model Meal {
+  id            String      @id @default(cuid())
+  mealPlanDay   MealPlanDay @relation(fields: [mealPlanDayId], references: [id])
+  mealPlanDayId String      @map("meal_plan_day_id")
+  name          String      // breakfast, lunch, dinner, snack
+  items         MealItem[]
+
+  @@map("meals")
+}
+
+model MealItem {
+  id     String @id @default(cuid())
+  meal   Meal   @relation(fields: [mealId], references: [id])
+  mealId String @map("meal_id")
+  food   Food   @relation(fields: [foodId], references: [id])
+  foodId String @map("food_id")
+  amount Float
+
+  @@map("meal_items")
+}
+
+model MealPlanAssignment {
+  id         String   @id @default(cuid())
+  client     Profile  @relation(fields: [clientId], references: [id])
+  clientId   String   @map("client_id")
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id])
+  mealPlanId String   @map("meal_plan_id")
+  startDate  DateTime @map("start_date")
+  endDate    DateTime? @map("end_date")
+
+  @@map("meal_plan_assignments")
+}
+
+// ─── Training ────────────────────────────────────────────────────────
+
+model Exercise {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  muscleGroups String[]      @map("muscle_groups")
+  equipment    String?
+  videoUrl     String?       @map("video_url")
+
+  trainingPlanExercises TrainingPlanExercise[]
+  workoutLogItems       WorkoutLogItem[]
+
+  @@map("exercises")
+}
+
+model TrainingPlan {
+  id          String   @id @default(cuid())
+  trainer     Profile  @relation(fields: [trainerId], references: [id])
+  trainerId   String   @map("trainer_id")
+  name        String
+  description String?
+  days        TrainingPlanDay[]
+  assignments TrainingPlanAssignment[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("training_plans")
+}
+
+model TrainingPlanDay {
+  id             String       @id @default(cuid())
+  trainingPlan   TrainingPlan @relation(fields: [trainingPlanId], references: [id])
+  trainingPlanId String       @map("training_plan_id")
+  dayNumber      Int          @map("day_number")
+  name           String?      // e.g. "Push Day", "Legs"
+  exercises      TrainingPlanExercise[]
+
+  @@map("training_plan_days")
+}
+
+model TrainingPlanExercise {
+  id                String          @id @default(cuid())
+  trainingPlanDay   TrainingPlanDay @relation(fields: [trainingPlanDayId], references: [id])
+  trainingPlanDayId String          @map("training_plan_day_id")
+  exercise          Exercise        @relation(fields: [exerciseId], references: [id])
+  exerciseId        String          @map("exercise_id")
+  sets              Int
+  reps              String          // can be "8-12" or "10"
+  restSeconds       Int?            @map("rest_seconds")
+  note              String?
+  order             Int
+
+  @@map("training_plan_exercises")
+}
+
+model TrainingPlanAssignment {
+  id             String       @id @default(cuid())
+  client         Profile      @relation(fields: [clientId], references: [id])
+  clientId       String       @map("client_id")
+  trainingPlan   TrainingPlan @relation(fields: [trainingPlanId], references: [id])
+  trainingPlanId String       @map("training_plan_id")
+  startDate      DateTime     @map("start_date")
+  endDate        DateTime?    @map("end_date")
+
+  @@map("training_plan_assignments")
+}
+
+model WorkoutLog {
+  id          String         @id @default(cuid())
+  profile     Profile        @relation(fields: [profileId], references: [id])
+  profileId   String         @map("profile_id")
+  date        DateTime       @db.Date
+  name        String?
+  durationMin Int?           @map("duration_min")
+  items       WorkoutLogItem[]
+  note        String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@map("workout_logs")
+}
+
+model WorkoutLogItem {
+  id           String     @id @default(cuid())
+  workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id])
+  workoutLogId String     @map("workout_log_id")
+  exercise     Exercise   @relation(fields: [exerciseId], references: [id])
+  exerciseId   String     @map("exercise_id")
+  sets         WorkoutSet[]
+
+  @@map("workout_log_items")
+}
+
+model WorkoutSet {
+  id             String         @id @default(cuid())
+  workoutLogItem WorkoutLogItem @relation(fields: [workoutLogItemId], references: [id])
+  workoutLogItemId String       @map("workout_log_item_id")
+  reps           Int?
+  weightKg       Float?         @map("weight_kg")
+  durationSec    Int?           @map("duration_sec")
+  note           String?
+
+  @@map("workout_sets")
+}
