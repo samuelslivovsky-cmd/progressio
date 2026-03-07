@@ -31,6 +31,7 @@ model Profile {
   // Trainer relations
   clients         ClientTrainer[] @relation("TrainerClients")
   mealPlans       MealPlan[]
+  mealTemplates   MealTemplate[]
   trainingPlans   TrainingPlan[]
 
   // Client relations
@@ -97,11 +98,14 @@ model Food {
   protein     Float
   carbs       Float
   fat         Float
+  fiber       Float   @default(0)
   servingSize Float   @default(100) @map("serving_size")
   unit        String  @default("g")
+  barcode     String? @unique
 
-  foodLogItems FoodLogItem[]
-  mealItems    MealItem[]
+  foodLogItems      FoodLogItem[]
+  mealItems         MealItem[]
+  mealTemplateItems MealTemplateItem[]
 
   @@map("foods")
 }
@@ -115,6 +119,7 @@ model FoodLog {
   note      String?
   createdAt DateTime      @default(now()) @map("created_at")
 
+  @@unique([profileId, date])
   @@map("food_logs")
 }
 
@@ -133,15 +138,16 @@ model FoodLogItem {
 // ─── Meal Plans ──────────────────────────────────────────────────────
 
 model MealPlan {
-  id          String   @id @default(cuid())
-  trainer     Profile  @relation(fields: [trainerId], references: [id])
-  trainerId   String   @map("trainer_id")
-  name        String
-  description String?
-  days        MealPlanDay[]
-  assignments MealPlanAssignment[]
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                   String   @id @default(cuid())
+  trainer              Profile  @relation(fields: [trainerId], references: [id])
+  trainerId            String   @map("trainer_id")
+  name                 String
+  description          String?
+  calorieTargetPerDay  Int?     @map("calorie_target_per_day")
+  days                 MealPlanDay[]
+  assignments          MealPlanAssignment[]
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   @@map("meal_plans")
 }
@@ -185,14 +191,40 @@ model MealPlanAssignment {
   mealPlanId String   @map("meal_plan_id")
   startDate  DateTime @map("start_date")
   endDate    DateTime? @map("end_date")
+  note       String?
 
   @@map("meal_plan_assignments")
+}
+
+// ─── Meal templates (uložené jedlá) ───────────────────────────────────
+
+model MealTemplate {
+  id        String   @id @default(cuid())
+  trainer   Profile  @relation(fields: [trainerId], references: [id])
+  trainerId String   @map("trainer_id")
+  name      String
+  items     MealTemplateItem[]
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("meal_templates")
+}
+
+model MealTemplateItem {
+  id             String      @id @default(cuid())
+  mealTemplate   MealTemplate @relation(fields: [mealTemplateId], references: [id], onDelete: Cascade)
+  mealTemplateId String      @map("meal_template_id")
+  food           Food        @relation(fields: [foodId], references: [id])
+  foodId         String      @map("food_id")
+  amount         Float
+
+  @@map("meal_template_items")
 }
 
 // ─── Training ────────────────────────────────────────────────────────
 
 model Exercise {
   id           String        @id @default(cuid())
+  externalId   String?        @unique @map("external_id") // ExerciseDB API id
   name         String
   description  String?
   muscleGroups String[]      @map("muscle_groups")
@@ -225,6 +257,7 @@ model TrainingPlanDay {
   trainingPlanId String       @map("training_plan_id")
   dayNumber      Int          @map("day_number")
   name           String?      // e.g. "Push Day", "Legs"
+  isRestDay      Boolean      @default(false) @map("is_rest_day")
   exercises      TrainingPlanExercise[]
 
   @@map("training_plan_days")
