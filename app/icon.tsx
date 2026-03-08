@@ -13,7 +13,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "white",
+          background: "transparent",
           borderRadius: 6,
         }}
       >
@@ -25,6 +25,7 @@ export default function Icon() {
             height: 28,
             borderRadius: "50%",
             border: "2px solid #e5e7eb",
+            background: "#080c09",
             boxSizing: "border-box",
           }}
         />
