@@ -93,11 +93,11 @@ export function FoodLogView() {
     label: MEAL_LABELS[mealType] ?? mealType,
     items: items.filter((i) => i.mealType === mealType),
   }));
-  const totalCal = items.reduce((sum, i) => sum + itemCalories(i), 0);
-  const totalProtein = items.reduce((sum, i) => sum + itemProtein(i), 0);
-  const totalCarbs = items.reduce((sum, i) => sum + itemCarbs(i), 0);
-  const totalFat = items.reduce((sum, i) => sum + itemFat(i), 0);
-  const totalFiber = items.reduce((sum, i) => sum + itemFiber(i), 0);
+  const totalCal = items.reduce((sum: number, i: FoodLogItem) => sum + itemCalories(i), 0);
+  const totalProtein = items.reduce((sum: number, i: FoodLogItem) => sum + itemProtein(i), 0);
+  const totalCarbs = items.reduce((sum: number, i: FoodLogItem) => sum + itemCarbs(i), 0);
+  const totalFat = items.reduce((sum: number, i: FoodLogItem) => sum + itemFat(i), 0);
+  const totalFiber = items.reduce((sum: number, i: FoodLogItem) => sum + itemFiber(i), 0);
 
   // Kalórie z makier (P/C 4 kcal/g, vláknina ~2 kcal/g, T 9 kcal/g) pre koláčový graf
   const proteinCal = totalProtein * 4;
@@ -295,10 +295,10 @@ export function FoodLogView() {
       {/* Samostatné karty pre každú časť dňa */}
       <div className="grid gap-4 sm:grid-cols-2">
         {byMeal.map(({ mealType, label, items: mealItems }) => {
-          const mealCal = mealItems.reduce((s, i) => s + itemCalories(i), 0);
-          const mealP = mealItems.reduce((s, i) => s + itemProtein(i), 0);
-          const mealC = mealItems.reduce((s, i) => s + itemCarbs(i), 0);
-          const mealF = mealItems.reduce((s, i) => s + itemFat(i), 0);
+          const mealCal = mealItems.reduce((s: number, i: FoodLogItem) => s + itemCalories(i), 0);
+          const mealP = mealItems.reduce((s: number, i: FoodLogItem) => s + itemProtein(i), 0);
+          const mealC = mealItems.reduce((s: number, i: FoodLogItem) => s + itemCarbs(i), 0);
+          const mealF = mealItems.reduce((s: number, i: FoodLogItem) => s + itemFat(i), 0);
           return (
             <Card key={mealType}>
               <CardHeader className="pb-2">

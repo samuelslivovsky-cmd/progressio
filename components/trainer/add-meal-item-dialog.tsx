@@ -344,24 +344,25 @@ export function AddMealItemDialog({
                   <p className="text-xs text-muted-foreground">Vyber uložené jedlo a pridaj všetky položky naraz</p>
                   <ul className="border rounded-md divide-y max-h-36 overflow-auto">
                     {mealTemplates.map((t) => {
+                      type TemplateItem = { amount: number; food: FoodForItem };
                       const totalCal = t.items.reduce(
-                        (sum, it) =>
+                        (sum: number, it: TemplateItem) =>
                           sum +
                           (it.amount / (it.food.servingSize || 100)) * it.food.calories,
                         0
                       );
                       const totalP = t.items.reduce(
-                        (sum, it) =>
+                        (sum: number, it: TemplateItem) =>
                           sum + (it.amount / (it.food.servingSize || 100)) * it.food.protein,
                         0
                       );
                       const totalS = t.items.reduce(
-                        (sum, it) =>
+                        (sum: number, it: TemplateItem) =>
                           sum + (it.amount / (it.food.servingSize || 100)) * it.food.carbs,
                         0
                       );
                       const totalT = t.items.reduce(
-                        (sum, it) =>
+                        (sum: number, it: TemplateItem) =>
                           sum + (it.amount / (it.food.servingSize || 100)) * it.food.fat,
                         0
                       );

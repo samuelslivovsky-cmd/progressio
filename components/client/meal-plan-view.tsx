@@ -40,9 +40,11 @@ function formatMealName(name: string) {
   return MEAL_LABELS[name.toLowerCase()] ?? name;
 }
 
+type MacroTotals = { calories: number; protein: number; carbs: number; fat: number };
+
 function mealTotals(items: MealItem[]) {
   return items.reduce(
-    (acc, it) => {
+    (acc: MacroTotals, it: MealItem) => {
       const mult = it.amount / (it.food.servingSize || 100);
       return {
         calories: acc.calories + it.food.calories * mult,
@@ -108,7 +110,7 @@ export function MealPlanView({
       <div className="flex flex-wrap gap-2">
         {mealPlan.days.map((day) => {
           const dayTotals = day.meals.reduce(
-            (acc, m) => {
+            (acc: MacroTotals, m: Meal) => {
               const t = mealTotals(m.items);
               return {
                 calories: acc.calories + t.calories,
@@ -140,7 +142,7 @@ export function MealPlanView({
                 <span className="text-sm font-normal text-muted-foreground ml-2">
                   {(() => {
                     const t = currentDay.meals.reduce(
-                      (acc, m) => {
+                      (acc: MacroTotals, m: Meal) => {
                         const x = mealTotals(m.items);
                         return {
                           calories: acc.calories + x.calories,

@@ -67,7 +67,7 @@ export function ClientFoodLogView({ clientId, clientName }: ClientFoodLogViewPro
     label: MEAL_LABELS[mealType] ?? mealType,
     items: items.filter((i) => i.mealType === mealType),
   }));
-  const totalCal = items.reduce((sum, i) => sum + itemCalories(i), 0);
+  const totalCal = items.reduce((sum: number, i: FoodLogItem) => sum + itemCalories(i), 0);
 
   if (isLoading) {
     return (
@@ -129,7 +129,7 @@ export function ClientFoodLogView({ clientId, clientName }: ClientFoodLogViewPro
             <div className="space-y-6">
               {byMeal.map(({ mealType, label, items: mealItems }) => {
                 if (mealItems.length === 0) return null;
-                const mealCal = mealItems.reduce((s, i) => s + itemCalories(i), 0);
+                const mealCal = mealItems.reduce((s: number, i: FoodLogItem) => s + itemCalories(i), 0);
                 return (
                   <div key={mealType}>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2">

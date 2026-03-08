@@ -254,7 +254,8 @@ export function ClientDetailTabs({
             <div className="space-y-2">
               {foodLogs.map((log) => {
                 const totalCal = log.items.reduce(
-                  (s, i) => s + (i.food.calories * i.amount) / Math.max(1, i.food.servingSize ?? 100),
+                  (s: number, i: { food: { calories: number; servingSize?: number }; amount: number }) =>
+                    s + (i.food.calories * i.amount) / Math.max(1, i.food.servingSize ?? 100),
                   0
                 );
                 return (

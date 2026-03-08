@@ -64,9 +64,11 @@ function formatMealName(name: string) {
   return MEAL_LABELS[name.toLowerCase()] ?? name;
 }
 
+type MacroTotals = { calories: number; protein: number; carbs: number; fat: number };
+
 function mealTotals(items: MealItem[]) {
   return items.reduce(
-    (acc, it) => {
+    (acc: MacroTotals, it: MealItem) => {
       const mult = it.amount / (it.food.servingSize || 100);
       return {
         calories: acc.calories + it.food.calories * mult,
@@ -233,7 +235,7 @@ export function MealPlanEditor({ mealPlan: initialPlan, assignmentCount, clients
 
   const selectedDayTotals = selectedDay
     ? selectedDay.meals.reduce(
-        (acc, m) => {
+        (acc: MacroTotals, m: Meal) => {
           const t = mealTotals(m.items);
           return {
             calories: acc.calories + t.calories,

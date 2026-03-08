@@ -60,7 +60,7 @@ export default function ClientMyPlansPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {plans.map((plan) => {
                 const totalExercises = plan.days.reduce(
-                  (sum, d) => sum + d.exercises.length,
+                  (sum: number, d: { exercises: unknown[] }) => sum + d.exercises.length,
                   0
                 );
                 const activeDays = plan.days.filter(
