@@ -24,7 +24,7 @@ export default async function TrainerDashboardPage() {
     where: { trainerId },
     select: { clientId: true },
   });
-  const clientIds = clientLinks.map((c) => c.clientId);
+  const clientIds = clientLinks.map((c: { clientId: string }) => c.clientId);
 
   const threeDaysAgo = startOfDay(subDays(new Date(), 3));
   const twoDaysAgo = startOfDay(subDays(new Date(), 2));
@@ -65,15 +65,15 @@ export default async function TrainerDashboardPage() {
     ]);
 
   const activeClientIds = new Set([
-    ...activeFromFood.map((x) => x.profileId),
-    ...activeFromWorkout.map((x) => x.profileId),
+    ...activeFromFood.map((x: { profileId: string }) => x.profileId),
+    ...activeFromWorkout.map((x: { profileId: string }) => x.profileId),
   ]);
   const activeCount = activeClientIds.size;
 
   type ActivityRow = { clientId: string; clientName: string; date: Date; type: "food" | "workout" };
   const merged = [
-    ...foodLogsRecent.map((f) => ({ profileId: f.profileId, date: f.date, type: "food" as const })),
-    ...workoutLogsRecent.map((w) => ({ profileId: w.profileId, date: w.date, type: "workout" as const })),
+    ...foodLogsRecent.map((f: { profileId: string; date: Date }) => ({ profileId: f.profileId, date: f.date, type: "food" as const })),
+    ...workoutLogsRecent.map((w: { profileId: string; date: Date }) => ({ profileId: w.profileId, date: w.date, type: "workout" as const })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   const seen = new Set<string>();
@@ -83,15 +83,16 @@ export default async function TrainerDashboardPage() {
     seen.add(row.profileId);
     uniqueByClient.push(row);
   }
-  const idsForNames = uniqueByClient.slice(0, 10).map((r) => r.profileId);
+  const idsForNames = uniqueByClient.slice(0, 10).map((r: { profileId: string }) => r.profileId);
   const profiles = await prisma.profile.findMany({
     where: { id: { in: idsForNames } },
     select: { id: true, name: true },
   });
-  const nameById = Object.fromEntries(profiles.map((p) => [p.id, p.name]));
+  type ProfileRow = { id: string; name: string };
+  const nameById = Object.fromEntries(profiles.map((p: ProfileRow) => [p.id, p.name]));
   const lastActivityList: ActivityRow[] = uniqueByClient
     .slice(0, 10)
-    .map((r) => ({ clientId: r.profileId, clientName: nameById[r.profileId] ?? "—", date: r.date, type: r.type }));
+    .map((r: { profileId: string; date: Date; type: "food" | "workout" }) => ({ clientId: r.profileId, clientName: nameById[r.profileId] ?? "—", date: r.date, type: r.type }));
 
   return (
     <div className="space-y-6">
@@ -156,7 +157,7 @@ export default async function TrainerDashboardPage() {
             <p className="text-muted-foreground text-sm">Žiadna aktivita v posledných 2 dňoch.</p>
           ) : (
             <div className="space-y-3">
-              {lastActivityList.map((row) => (
+              {lastActivityList.map((row: ActivityRow) => (
                 <div key={row.clientId} className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium shrink-0">

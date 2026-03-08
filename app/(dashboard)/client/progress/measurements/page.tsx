@@ -77,10 +77,20 @@ export default function ClientMeasurementsPage() {
     onError: (e) => toast.error(e.message),
   });
 
+  type MeasurementRow = {
+    loggedAt: Date | string;
+    waist?: number | null;
+    hips?: number | null;
+    chest?: number | null;
+    arm?: number | null;
+    thigh?: number | null;
+    calf?: number | null;
+    neck?: number | null;
+  };
   const chartData = measurements
     .slice()
     .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime())
-    .map((m) => ({
+    .map((m: MeasurementRow) => ({
       date: format(new Date(m.loggedAt), "d.M."),
       fullDate: m.loggedAt,
       waist: m.waist ?? undefined,

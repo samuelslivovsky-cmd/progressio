@@ -149,15 +149,16 @@ export const getDropOffRanking = trainerProcedure
     });
     if (clients.length === 0) return [];
 
+    type ClientRow = { clientId: string; client: { id: string; name: string } };
     const snapshots = await ctx.prisma.analyticsSnapshot.findMany({
-      where: { clientId: { in: clients.map((c) => c.clientId) } },
+      where: { clientId: { in: clients.map((c: ClientRow) => c.clientId) } },
       orderBy: { date: "desc" },
     });
 
     const latestByClient = new Map<string, { clientId: string; clientName: string; dropOffScore: number; date: Date }>();
     for (const s of snapshots) {
       if (!latestByClient.has(s.clientId)) {
-        const client = clients.find((c) => c.clientId === s.clientId)?.client;
+        const client = clients.find((c: ClientRow) => c.clientId === s.clientId)?.client;
         latestByClient.set(s.clientId, {
           clientId: s.clientId,
           clientName: client?.name ?? "",
@@ -172,7 +173,7 @@ export const getDropOffRanking = trainerProcedure
     );
     if (withSnapshot.length >= limit) return withSnapshot.slice(0, limit);
 
-    const missing = clients.filter((c) => !latestByClient.has(c.clientId));
+    const missing = clients.filter((c: ClientRow) => !latestByClient.has(c.clientId));
     for (const c of missing.slice(0, 15)) {
       try {
         const score = await analytics.getDropOffScore(ctx.prisma, c.clientId);

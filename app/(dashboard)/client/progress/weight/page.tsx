@@ -70,7 +70,7 @@ export default function ClientWeightPage() {
     const sorted = [...weightLogs].sort(
       (a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime()
     );
-    return sorted.map((log) => {
+    return sorted.map((log: { loggedAt: Date | string; weight: number; unit: string }) => {
       const weightKg = log.unit === "LBS" ? log.weight * LBS_TO_KG : log.weight;
       return {
         date: format(new Date(log.loggedAt), "d.M."),
@@ -85,7 +85,7 @@ export default function ClientWeightPage() {
   const trend = useMemo(() => {
     if (chartData.length < 2) return { slope: 0, intercept: chartData[0]?.raw ?? 0 };
     const firstDate = new Date(chartData[0]!.fullDate);
-    const points = chartData.map((d) => ({
+    const points = chartData.map((d: { fullDate: Date | string; raw: number }) => ({
       x: differenceInDays(new Date(d.fullDate), firstDate),
       y: d.raw,
     }));

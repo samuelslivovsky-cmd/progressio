@@ -101,7 +101,7 @@ export async function getWorkoutAdherence(
   });
   const from = subDays(startOfDay(new Date()), days);
   const plannedWorkouts = planEnd
-    ? planEnd.trainingPlan.days.filter((d) => !d.isRestDay).length
+    ? planEnd.trainingPlan.days.filter((d: { isRestDay: boolean }) => !d.isRestDay).length
     : 0;
   const weeks = days / 7;
   const planned = plannedWorkouts * weeks;
@@ -191,8 +191,8 @@ export async function detectPlateau(
     select: { weight: true },
   });
   if (weights.length < 7) return { detected: false };
-  const minW = Math.min(...weights.map((w) => w.weight));
-  const maxW = Math.max(...weights.map((w) => w.weight));
+  const minW = Math.min(...weights.map((w: { weight: number }) => w.weight));
+  const maxW = Math.max(...weights.map((w: { weight: number }) => w.weight));
   const rangeKg = maxW - minW;
   const adherence = await getWorkoutAdherence(prisma, clientId, 21);
   if (rangeKg < 0.5 && adherence >= 70) {
@@ -303,7 +303,7 @@ export async function predictGoalDate(
     };
   }
   const startT = logs[0].loggedAt.getTime();
-  const points = logs.map((l) => ({
+  const points = logs.map((l: { loggedAt: Date; weight: number }) => ({
     x: (l.loggedAt.getTime() - startT) / (7 * 24 * 60 * 60 * 1000),
     y: l.weight,
   }));
@@ -471,7 +471,7 @@ export async function generateAlerts(
     where: { clientId, resolved: false },
     select: { type: true },
   });
-  const existingTypes = new Set(existing.map((e) => e.type));
+  const existingTypes = new Set(existing.map((e: { type: string }) => e.type));
 
   for (const a of alerts) {
     if (existingTypes.has(a.type)) continue;

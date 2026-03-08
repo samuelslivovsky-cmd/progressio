@@ -42,7 +42,7 @@ export function ClientDashboardCharts({
 }: ClientDashboardChartsProps) {
   const weightChartData = weightLogs
     .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime())
-    .map((log) => ({
+    .map((log: { loggedAt: string; weight: number }) => ({
       date: format(new Date(log.loggedAt), "d.M."),
       weight: log.weight,
     }));

@@ -83,6 +83,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 - Use `@/` import alias throughout.
 - Prisma models use PascalCase, DB columns use snake_case.
 - Date handling: always use `date-fns` (no `moment.js`).
+- **TypeScript (strict)**: Avoid implicit `any`. In `.reduce()` callbacks always type both the accumulator and the item (e.g. `(sum: number, item: FoodLogItem) => ...`). Same for other callbacks if the compiler or CI (e.g. Vercel) reports implicit any.
 
 ## Klient AI Tier — Solo AI Coaching (4.99€/month)
 

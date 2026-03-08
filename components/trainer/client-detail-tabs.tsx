@@ -72,11 +72,11 @@ export function ClientDetailTabs({
   const weightDiff = lastWeight && prevWeight ? lastWeight.weight - prevWeight.weight : null;
   const weightChartData = [...weightLogs]
     .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime())
-    .map((log) => ({ date: format(new Date(log.loggedAt), "d.M."), weight: log.weight }));
+    .map((log: { loggedAt: Date | string; weight: number }) => ({ date: format(new Date(log.loggedAt), "d.M."), weight: log.weight }));
 
   const measurementChartData = [...measurements]
     .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime())
-    .map((m) => ({
+    .map((m: { loggedAt: Date | string; waist?: number | null; hips?: number | null; chest?: number | null }) => ({
       date: format(new Date(m.loggedAt), "d.M."),
       waist: m.waist ?? undefined,
       hips: m.hips ?? undefined,
@@ -252,7 +252,7 @@ export function ClientDetailTabs({
             </Card>
           ) : (
             <div className="space-y-2">
-              {foodLogs.map((log) => {
+              {foodLogs.map((log: { id: string; date: Date | string; items: { food: { calories: number; servingSize?: number }; amount: number }[] }) => {
                 const totalCal = log.items.reduce(
                   (s: number, i: { food: { calories: number; servingSize?: number }; amount: number }) =>
                     s + (i.food.calories * i.amount) / Math.max(1, i.food.servingSize ?? 100),
@@ -288,7 +288,7 @@ export function ClientDetailTabs({
             </Card>
           ) : (
             <div className="space-y-2">
-              {workoutLogs.map((log) => (
+              {workoutLogs.map((log: { id: string; date: Date | string; name?: string | null; items: { id: string; exercise: { name: string } }[]; durationMin?: number | null }) => (
                 <Card key={log.id}>
                   <CardContent className="py-3 flex items-center justify-between flex-wrap gap-2">
                     <div>
@@ -299,7 +299,7 @@ export function ClientDetailTabs({
                       {log.items.length} cv. {log.durationMin != null && `· ${log.durationMin} min`}
                     </span>
                     <ul className="w-full text-sm text-muted-foreground list-disc list-inside">
-                      {log.items.slice(0, 5).map((item) => (
+                      {log.items.slice(0, 5).map((item: { id: string; exercise: { name: string } }) => (
                         <li key={item.id}>{item.exercise.name}</li>
                       ))}
                       {log.items.length > 5 && <li>+{log.items.length - 5} ďalších</li>}

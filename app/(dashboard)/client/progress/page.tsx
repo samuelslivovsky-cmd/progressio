@@ -27,7 +27,7 @@ export default function ClientProgressOverviewPage() {
     .slice()
     .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime())
     .slice(-14)
-    .map((log) => ({
+    .map((log: { loggedAt: Date | string; weight: number }) => ({
       date: format(new Date(log.loggedAt), "d.M."),
       weight: log.weight,
     }));

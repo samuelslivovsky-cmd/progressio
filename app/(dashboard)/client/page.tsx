@@ -66,7 +66,7 @@ export default async function ClientDashboardPage() {
     const d = subDays(today, 6 - i);
     const dateStr = format(d, "yyyy-MM-dd");
     const log = foodLogsLast7Days.find(
-      (f) => format(f.date, "yyyy-MM-dd") === dateStr
+      (f: { date: Date }) => format(f.date, "yyyy-MM-dd") === dateStr
     );
     const calories = log?.items.reduce(
       (s: number, item: FoodLogItemWithFood) => s + (item.food.calories * item.amount) / (item.food.servingSize || 100),
@@ -111,7 +111,7 @@ export default async function ClientDashboardPage() {
             ? { name: todayWorkout.name, itemsCount: todayWorkout.items.length }
             : null
         }
-        weightLogs={weightLogsLast14.map((w) => ({
+        weightLogs={weightLogsLast14.map((w: { weight: number; unit: string; loggedAt: Date }) => ({
           weight: w.weight,
           unit: w.unit,
           loggedAt: w.loggedAt.toISOString(),
