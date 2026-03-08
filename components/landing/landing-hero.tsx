@@ -21,11 +21,11 @@ export function LandingHero({ role, dashboardHref }: LandingHeroProps) {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
             Jedna platforma pre{" "}
             <span className="text-primary">trénerov</span> a{" "}
-            <span className="text-primary">klientov</span>
+            <span className="text-primary">členov</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground">
             Sleduj stravu, tréningy, váhu a pokrok na jednom mieste. Tréneri
-            vytvárajú plány, klienti logujú a obe strany vidia výsledky.
+            vytvárajú plány, členovia logujú a obe strany vidia výsledky.
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-4">
             {role ? (

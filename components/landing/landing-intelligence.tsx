@@ -64,6 +64,15 @@ const pillars = [
   { title: "Navrhnuté akcie", desc: "Ku každému alertu systém navrhne konkrétny krok — ty len potvrdíš alebo zamietneš." },
 ];
 
+const memberPillars = [
+  { title: "Predikcia cieľovej váhy", desc: "Lineárny trend z tvojich vážení → odhadovaný dátum, kedy dosiahneš cieľ. Vidíš to priamo v dashboarde." },
+  { title: "TDEE a makrá", desc: "Systém (alebo AI) ti vypočíta denný výdaj a odporúčané kalórie a makrá podľa cieľa." },
+  { title: "AI týždenné hodnotenie", desc: "Člen AI dostáva každý týždeň zhrnutie: čo bolo dobre, čo zlepšiť. Konkrétne odporúčania z tvojich dát." },
+  { title: "Séria a trendy", desc: "Koľko dní v rade si logoval, ako sa mení váha a sila. Všetko v prehľadných grafoch." },
+  { title: "Plató detekcia", desc: "Ak váha stagnuje 3+ týždne, systém ťa upozorní a (pri AI) navrhne úpravu kalórií alebo tréningu." },
+  { title: "Inteligentné upozornenia", desc: "Streak v ohrození, osobné rekordy, rizikové dni — aplikácia ti povie, kedy si dať pozor alebo sa odmeniť." },
+];
+
 function PulsingDot({ color }: { color: string }) {
   return (
     <div style={{ position: "relative", width: "10px", height: "10px", flexShrink: 0 }}>
@@ -159,15 +168,38 @@ const INTEL_CSS = `
   }
 `;
 
-export function LandingIntelligence() {
+type LandingIntelligenceProps = { variant?: "trainer" | "member" };
+
+export function LandingIntelligence({ variant = "trainer" }: LandingIntelligenceProps) {
   const left = useVisible(0.1);
   const right = useVisible(0.1);
   const pillarsRef = useVisible(0.1);
+  const isMember = variant === "member";
+  const activePillars = isMember ? memberPillars : pillars;
+  const themeColors = isMember
+    ? { dot: "#a78bfa", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.2)", tag: "rgba(167,139,250,0.85)" }
+    : levelColors.green;
+
+  const trainerHeadline = (
+    <>
+      Nie len zapisovanie.
+      <br />
+      <span style={{ color: "#22c55e" }}>Predikcia.</span>
+    </>
+  );
+  const memberHeadline = (
+    <>
+      Tvoj pokrok.
+      <br />
+      <span style={{ color: isMember ? "#a78bfa" : "#22c55e" }}>Predikcia.</span>
+    </>
+  );
+  const trainerSub = "Progressio sleduje vzory v správaní každého klienta a upozorní ťa skôr, ako nastane problém — bez toho, aby si musel niečo kontrolovať manuálne.";
+  const memberSub = "Systém analyzuje tvoje váženie, logovanie a tréningy. Predikcia cieľovej váhy, TDEE, týždenné AI hodnotenie a upozornenia — všetko pre teba.";
 
   return (
     <div className="landing-intel-section" style={{ padding: "110px 0 100px", position: "relative", overflow: "hidden" }}>
       <style>{INTEL_CSS}</style>
-      {/* CSS for pulse animation */}
       <style>{`
         @keyframes intel-pulse {
           0%, 100% { transform: scale(1); opacity: 0.25; }
@@ -175,7 +207,6 @@ export function LandingIntelligence() {
         }
       `}</style>
 
-      {/* Ambient glow */}
       <div
         style={{
           position: "absolute",
@@ -183,22 +214,21 @@ export function LandingIntelligence() {
           right: "10%",
           width: "500px",
           height: "400px",
-          background: "radial-gradient(ellipse, rgba(34,197,94,0.07) 0%, transparent 70%)",
+          background: `radial-gradient(ellipse, ${isMember ? "rgba(167,139,250,0.06)" : "rgba(34,197,94,0.07)"} 0%, transparent 70%)`,
           pointerEvents: "none",
         }}
       />
 
       <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px" }}>
 
-        {/* Section label + headline */}
         <div className="landing-intel-head" style={{ textAlign: "center", marginBottom: "72px" }}>
           <div
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              background: "rgba(34,197,94,0.08)",
-              border: "1px solid rgba(34,197,94,0.2)",
+              background: isMember ? "rgba(167,139,250,0.08)" : "rgba(34,197,94,0.08)",
+              border: `1px solid ${isMember ? "rgba(167,139,250,0.2)" : "rgba(34,197,94,0.2)"}`,
               borderRadius: "20px",
               padding: "5px 14px",
               marginBottom: "20px",
@@ -209,13 +239,13 @@ export function LandingIntelligence() {
                 width: "6px",
                 height: "6px",
                 borderRadius: "50%",
-                background: "#22c55e",
-                boxShadow: "0 0 8px rgba(34,197,94,0.8)",
+                background: isMember ? "#a78bfa" : "#22c55e",
+                boxShadow: isMember ? "0 0 8px rgba(167,139,250,0.8)" : "0 0 8px rgba(34,197,94,0.8)",
                 animation: "intel-pulse 2s ease-in-out infinite",
               }}
             />
-            <span style={{ fontSize: "12px", fontWeight: 600, color: "#4ade80", letterSpacing: "0.06em" }}>
-              Prediktívna inteligencia
+            <span style={{ fontSize: "12px", fontWeight: 600, color: isMember ? "#c4b5fd" : "#4ade80", letterSpacing: "0.06em" }}>
+              {isMember ? "Pre členov" : "Prediktívna inteligencia"}
             </span>
           </div>
 
@@ -229,9 +259,7 @@ export function LandingIntelligence() {
               marginBottom: "18px",
             }}
           >
-            Nie len zapisovanie.
-            <br />
-            <span style={{ color: "#22c55e" }}>Predikcia.</span>
+            {isMember ? memberHeadline : trainerHeadline}
           </h2>
           <p
             style={{
@@ -242,11 +270,10 @@ export function LandingIntelligence() {
               lineHeight: 1.65,
             }}
           >
-            Progressio sleduje vzory v správaní každého klienta a upozorní ťa skôr, ako nastane problém — bez toho, aby si musel niečo kontrolovať manuálne.
+            {isMember ? memberSub : trainerSub}
           </p>
         </div>
 
-        {/* Two-column: copy + mock alert panel */}
         <div
           className="landing-intel-twocol"
           style={{
@@ -257,7 +284,6 @@ export function LandingIntelligence() {
             marginBottom: "80px",
           }}
         >
-          {/* Left: value props */}
           <div ref={left.ref}>
             <div
               style={{
@@ -269,35 +295,33 @@ export function LandingIntelligence() {
                 transition: "opacity 0.7s ease, transform 0.7s ease",
               }}
             >
-              {[
-                {
-                  label: "Prioritná fronta klientov",
-                  text: "Namiesto abecedného zoznamu vidíš klientov zoradených podľa naliehavosti. Vieš presne, kde začať každé ráno.",
-                },
-                {
-                  label: "Konkrétne upozornenia",
-                  text: "Nie grafy, ktoré treba interpretovať. Priame alerty: kto je v ohrození, čo vynecháva, kde stagnuje.",
-                },
-                {
-                  label: "Navrhnuté akcie",
-                  text: "Ku každému alertu systém navrhne konkrétny krok — upravia plán, odošlú správu alebo zaradí deload. Ty len potvrdíš.",
-                },
-              ].map((item, i) => (
+              {(isMember
+                ? [
+                    { label: "Predikcia cieľovej váhy", text: "Lineárny trend z tvojich vážení ti povie, kedy približne dosiahneš cieľovú váhu. Vidíš to priamo v aplikácii." },
+                    { label: "TDEE a makrá", text: "S trénerom alebo s AI — systém ti vypočíta denný výdaj a odporúčané kalórie a makrá podľa tvojho cieľa." },
+                    { label: "Séria a trendy", text: "Koľko dní v rade si logoval, ako sa mení váha a sila. Všetko v prehľadných grafoch a štatistikách." },
+                  ]
+                : [
+                    { label: "Prioritná fronta klientov", text: "Namiesto abecedného zoznamu vidíš klientov zoradených podľa naliehavosti. Vieš presne, kde začať každé ráno." },
+                    { label: "Konkrétne upozornenia", text: "Nie grafy, ktoré treba interpretovať. Priame alerty: kto je v ohrození, čo vynecháva, kde stagnuje." },
+                    { label: "Navrhnuté akcie", text: "Ku každému alertu systém navrhne konkrétny krok — upravia plán, odošlú správu alebo zaradí deload. Ty len potvrdíš." },
+                  ]
+              ).map((item: { label: string; text: string }, i: number) => (
                 <div key={item.label} style={{ display: "flex", gap: "16px" }}>
                   <div
                     style={{
                       width: "32px",
                       height: "32px",
                       borderRadius: "8px",
-                      background: "rgba(34,197,94,0.08)",
-                      border: "1px solid rgba(34,197,94,0.2)",
+                      background: themeColors.bg,
+                      border: `1px solid ${themeColors.border}`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
                       fontSize: "13px",
                       fontWeight: 800,
-                      color: "#22c55e",
+                      color: themeColors.dot,
                     }}
                   >
                     {i + 1}
@@ -315,12 +339,46 @@ export function LandingIntelligence() {
             </div>
           </div>
 
-          {/* Right: mock alert feed */}
+          {isMember ? (
+            <div
+              ref={right.ref}
+              style={{
+                opacity: right.visible ? 1 : 0,
+                transform: right.visible ? "translateX(0)" : "translateX(20px)",
+                transition: "opacity 0.7s ease, transform 0.7s ease",
+              }}
+            >
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.025)",
+                  border: "1px solid rgba(167,139,250,0.2)",
+                  borderRadius: "20px",
+                  padding: "24px",
+                  boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
+                }}
+              >
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(167,139,250,0.8)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "16px" }}>Tvoj prehľad</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "rgba(167,139,250,0.06)", borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Odhad cieľa</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#c4b5fd" }}>6 týždňov</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "rgba(167,139,250,0.06)", borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>TDEE</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#c4b5fd" }}>2 420 kcal</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "rgba(167,139,250,0.06)", borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Séria</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#c4b5fd" }}>14 dní</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div
             ref={right.ref}
             style={{ position: "relative" }}
           >
-            {/* Card shell */}
             <div
               style={{
                 background: "rgba(255,255,255,0.025)",
@@ -394,9 +452,9 @@ export function LandingIntelligence() {
               </div>
             </div>
           </div>
+          )}
         </div>
 
-        {/* Bottom: 6 pillars grid */}
         <div
           ref={pillarsRef.ref}
           className="landing-intel-pillars"
@@ -406,7 +464,7 @@ export function LandingIntelligence() {
             gap: "16px",
           }}
         >
-          {pillars.map((p, i) => (
+          {activePillars.map((p, i) => (
             <div
               key={p.title}
               style={{
@@ -424,9 +482,9 @@ export function LandingIntelligence() {
                   width: "6px",
                   height: "6px",
                   borderRadius: "50%",
-                  background: "#22c55e",
+                  background: themeColors.dot,
                   marginBottom: "12px",
-                  boxShadow: "0 0 6px rgba(34,197,94,0.5)",
+                  boxShadow: isMember ? "0 0 6px rgba(167,139,250,0.5)" : "0 0 6px rgba(34,197,94,0.5)",
                 }}
               />
               <div style={{ fontSize: "15px", fontWeight: 700, color: "#fff", marginBottom: "6px" }}>

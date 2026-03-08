@@ -5,6 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Progressio",
     short_name: "Progressio",
     description: "Fitness tracker pre trénerov a klientov",
+    id: "/",
     start_url: "/",
     display: "standalone",
     background_color: "#080c09",

@@ -1,62 +1,104 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
-
-function useVisible(threshold = 0.1) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setVisible(true); },
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
+type LandingReviewsProps = { variant?: "trainer" | "member" };
 
 const reviews = [
-  {
-    text: "Konečne jeden systém pre klientov aj pre mňa. Nemusím riešiť tabuľky ani WhatsApp — všetko mám v Progressio.",
-    author: "Peter K.",
-    role: "Tréner",
-    since: "6 mesiacov",
-  },
-  {
-    text: "Logujem jedlo a tréningy každý deň. Tréner vidí môj pokrok a upraví plán. Jednoduché a prehľadné.",
-    author: "Mária S.",
-    role: "Klientka",
-    since: "4 mesiace",
-  },
-  {
-    text: "Používam Progressio s 15 klientmi. Plány, váha, fotky — všetko na jednom mieste. Šetrí to hodiny týždenne.",
-    author: "Jakub V.",
-    role: "Tréner",
-    since: "8 mesiacov",
-  },
-  {
-    text: "Progress fotky a grafy ma motivujú. Vidím, ako sa zlepšujem, a tréner to komentuje priamo v aplikácii.",
-    author: "Lucia M.",
-    role: "Klientka",
-    since: "3 mesiace",
-  },
+  { text: "Konečne jeden systém. Nemusím riešiť tabuľky ani WhatsApp.", author: "Peter K.", role: "Tréner", since: "6 mesiacov" },
+  { text: "Logujem jedlo a tréningy každý deň. Tréner vidí môj pokrok.", author: "Mária S.", role: "Členka", since: "4 mesiace" },
+  { text: "15 klientov, všetko na jednom mieste. Šetrí hodiny týždenne.", author: "Jakub V.", role: "Tréner", since: "8 mesiacov" },
+  { text: "Progress fotky a grafy ma motivujú. Tréner komentuje priamo v apke.", author: "Lucia M.", role: "Členka", since: "3 mesiace" },
+  { text: "AI kouč mi zostavil TDEE a makrá. Prvý mesiac: -3,2 kg.", author: "Michal R.", role: "Člen AI", since: "2 mesiace" },
+  { text: "Prioritná fronta je presne to, čo som potreboval. Vidím, kto má problém.", author: "Andrea T.", role: "Trénerka", since: "5 mesiacov" },
+  { text: "Bez trénera som si nevedel predstaviť štruktúru. AI mi dáva týždenný feedback.", author: "Ján M.", role: "Člen AI", since: "1 mesiac" },
 ];
 
 const REVIEWS_CSS = `
+  @keyframes landing-reviews-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .landing-reviews-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: landing-reviews-marquee 40s linear infinite;
+  }
+  .landing-reviews-marquee-track:hover {
+    animation-play-state: paused;
+  }
   @media (max-width: 767px) {
     .landing-reviews-wrap { padding: 56px 0 !important; }
-    .landing-reviews-head { margin-bottom: 40px !important; }
-    .landing-reviews-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
-    .landing-reviews-card { padding: 20px 20px !important; }
-    .landing-reviews-card p { font-size: 15px !important; }
+    .landing-reviews-head { margin-bottom: 28px !important; }
+    .landing-reviews-marquee-track { animation-duration: 60s; }
   }
 `;
 
-export function LandingReviews() {
-  const { ref, visible } = useVisible(0.1);
+function ReviewCard({
+  r,
+  accentColor,
+  accentBg,
+  borderColor,
+}: {
+  r: (typeof reviews)[0];
+  accentColor: string;
+  accentBg: string;
+  borderColor: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        flexDirection: "column",
+        gap: 12,
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${borderColor}`,
+        borderRadius: 18,
+        padding: "24px 28px",
+        marginRight: 20,
+        minWidth: 280,
+        maxWidth: 320,
+        flexShrink: 0,
+      }}
+    >
+      <p
+        style={{
+          fontSize: 15,
+          color: "rgba(255,255,255,0.82)",
+          lineHeight: 1.65,
+          margin: 0,
+          flex: 1,
+        }}
+      >
+        &ldquo;{r.text}&rdquo;
+      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{r.author}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{r.role}</div>
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: accentColor,
+            background: accentBg,
+            border: `1px solid ${borderColor}`,
+            borderRadius: 100,
+            padding: "4px 10px",
+          }}
+        >
+          {r.since}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function LandingReviews({ variant = "trainer" }: LandingReviewsProps) {
+  const isMember = variant === "member";
+  const accentColor = isMember ? "#a78bfa" : "#22c55e";
+  const accentLight = isMember ? "#c4b5fd" : "#4ade80";
+  const accentBg = isMember ? "rgba(167,139,250,0.08)" : "rgba(34,197,94,0.08)";
+  const borderColor = isMember ? "rgba(167,139,250,0.18)" : "rgba(34,197,94,0.12)";
 
   return (
     <div
@@ -64,134 +106,58 @@ export function LandingReviews() {
       style={{
         background: "transparent",
         padding: "100px 0",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        overflow: "hidden",
       }}
     >
       <style>{REVIEWS_CSS}</style>
-      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px" }}>
-        <div className="landing-reviews-head" style={{ textAlign: "center", marginBottom: "64px" }}>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "#22c55e",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              marginBottom: "14px",
-            }}
-          >
-            Referencie
-          </div>
-          <h2
-            style={{
-              fontSize: "clamp(28px, 4vw, 46px)",
-              fontWeight: 700,
-              color: "#fff",
-              lineHeight: 1.15,
-              letterSpacing: "-0.02em",
-              margin: 0,
-            }}
-          >
-            Čo hovoria používatelia
-          </h2>
-        </div>
-
+      <div style={{ marginBottom: 48, textAlign: "center", padding: "0 24px" }}>
         <div
-          ref={ref}
-          className="landing-reviews-grid"
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "20px",
+            fontSize: "11px",
+            fontWeight: 700,
+            color: accentColor,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            marginBottom: 14,
           }}
         >
-          {reviews.map((r, i) => (
-            <div
-              key={r.author}
-              className="landing-reviews-card"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(34,197,94,0.1)",
-                borderRadius: "18px",
-                padding: "28px 32px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "20px",
-                opacity: visible ? 1 : 0,
-                transform: visible ? "translateY(0)" : "translateY(20px)",
-                transition: `opacity 0.6s ease ${i * 0.1}s, transform 0.6s ease ${i * 0.1}s`,
-              }}
-            >
-              {/* Quote mark */}
-              <svg
-                width="28"
-                height="20"
-                viewBox="0 0 28 20"
-                fill="none"
-                style={{ opacity: 0.3, flexShrink: 0 }}
-              >
-                <path
-                  d="M0 20V12.667C0 5.556 4.148 1.185 12.444 0l1.334 2C9.926 2.963 7.63 5.481 7 9.333H12V20H0Zm16 0V12.667C16 5.556 20.148 1.185 28.444 0l1.334 2C25.926 2.963 23.63 5.481 23 9.333H28V20H16Z"
-                  fill="#22c55e"
-                />
-              </svg>
+          Referencie
+        </div>
+        <h2
+          style={{
+            fontSize: "clamp(26px, 3.5vw, 42px)",
+            fontWeight: 800,
+            color: "#fff",
+            letterSpacing: "-0.03em",
+            margin: 0,
+            lineHeight: 1.15,
+          }}
+        >
+          Čo hovoria tréneri a členovia
+        </h2>
+      </div>
 
-              <p
-                style={{
-                  fontSize: "16px",
-                  color: "rgba(255,255,255,0.82)",
-                  lineHeight: 1.7,
-                  margin: 0,
-                  flex: 1,
-                }}
-              >
-                {r.text}
-              </p>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  paddingTop: "16px",
-                  borderTop: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: 700,
-                      color: "#fff",
-                    }}
-                  >
-                    {r.author}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "rgba(255,255,255,0.58)",
-                      marginTop: "2px",
-                    }}
-                  >
-                    {r.role}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#4ade80",
-                    background: "rgba(34,197,94,0.08)",
-                    border: "1px solid rgba(34,197,94,0.16)",
-                    borderRadius: "20px",
-                    padding: "3px 10px",
-                    fontWeight: 600,
-                  }}
-                >
-                  {r.since}
-                </div>
-              </div>
-            </div>
-          ))}
+      <div
+        style={{
+          overflow: "hidden",
+          maskImage: "linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%)",
+        }}
+      >
+        <div className="landing-reviews-marquee-track">
+          {[0, 1].map((pass) =>
+            reviews.map((r, i) => (
+              <ReviewCard
+                key={`${pass}-${i}-${r.author}`}
+                r={r}
+                accentColor={accentLight}
+                accentBg={accentBg}
+                borderColor={borderColor}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>

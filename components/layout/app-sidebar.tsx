@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Profile } from "@prisma/client";
@@ -36,9 +37,16 @@ import {
   LogOut,
   User,
   Smartphone,
+  Share,
 } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { usePwaInstall } from "@/components/pwa-install-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 
 export const trainerBottomNav = [
@@ -78,6 +86,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   const pwaInstall = usePwaInstall();
+  const [showIosGuide, setShowIosGuide] = useState(false);
   const { data: unresolvedCount = 0 } = trpc.analytics.getUnresolvedAlertCount.useQuery(
     undefined,
     { enabled: profile.role === "TRAINER" }
@@ -135,7 +144,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
 
       <SidebarFooter className="border-t">
         <SidebarMenu>
-          {pwaInstall && (
+          {pwaInstall && !pwaInstall.isStandalone && (pwaInstall.canInstall || pwaInstall.isIos) && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 h-8 text-left [&_svg]:size-4 [&_svg]:shrink-0"
@@ -143,20 +152,43 @@ export function AppSidebar({ profile }: AppSidebarProps) {
                   if (pwaInstall.canInstall) {
                     if (isMobile) setOpenMobile(false);
                     await pwaInstall.install();
+                  } else if (pwaInstall.isIos) {
+                    setShowIosGuide(true);
                   }
                 }}
-                disabled={!pwaInstall.canInstall || pwaInstall.isInstalling}
+                disabled={pwaInstall.isInstalling}
               >
                 <Smartphone className="h-4 w-4 shrink-0" />
                 <span className="truncate flex-1">
                   {pwaInstall.isInstalling
                     ? "Inštalujem…"
-                    : pwaInstall.canInstall
-                      ? "Nainštaluj aplikáciu"
-                      : "Pridať na plochu"}
+                    : "Nainštaluj aplikáciu"}
                 </span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+          )}
+          {pwaInstall?.isIos && (
+            <Dialog open={showIosGuide} onOpenChange={setShowIosGuide}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Inštalácia na iOS</DialogTitle>
+                </DialogHeader>
+                <ol className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <span className="font-semibold text-foreground">1.</span>
+                    <span>Klikni na ikonu <Share className="inline h-4 w-4 align-text-bottom" /> (Zdieľať) v dolnej lište Safari</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-semibold text-foreground">2.</span>
+                    <span>Vyber &quot;Pridať na plochu&quot;</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="font-semibold text-foreground">3.</span>
+                    <span>Potvrď kliknutím na &quot;Pridať&quot;</span>
+                  </li>
+                </ol>
+              </DialogContent>
+            </Dialog>
           )}
           <SidebarMenuItem>
             <DropdownMenu>

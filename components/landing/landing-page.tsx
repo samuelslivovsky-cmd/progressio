@@ -1,17 +1,20 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/shared/logo";
 import { HeroParallaxZone } from "@/components/landing/hero-parallax-zone";
 import { LandingHamburgerNav } from "@/components/landing/landing-hamburger-nav";
-import { LandingStats } from "@/components/landing/landing-stats";
+import { LandingStatsStrip } from "@/components/landing/landing-stats-strip";
 import { LandingIntelligence } from "@/components/landing/landing-intelligence";
 import { LandingHowItWorks } from "@/components/landing/landing-how-it-works";
 import { LandingFeatures } from "@/components/landing/landing-features";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingReviews } from "@/components/landing/landing-reviews";
 import { LandingCta } from "@/components/landing/landing-cta";
-import { LandingCtaToPricing } from "@/components/landing/landing-cta-to-pricing";
+import { LandingAudienceTabs } from "@/components/landing/landing-audience-tabs";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
 type LandingPageProps = {
@@ -20,10 +23,15 @@ type LandingPageProps = {
 
 export function LandingPage({ role = null }: LandingPageProps) {
   const dashboardHref = role === "TRAINER" ? "/trainer" : "/client";
+  const [audience, setAudience] = useState<"trainer" | "member">("trainer");
+
+  const accentHover = audience === "member" ? "#a78bfa" : "#22c55e";
+  const accentBorder = audience === "member" ? "rgba(167,139,250,0.08)" : "rgba(34,197,94,0.08)";
+  const topbarButtonBg = audience === "member" ? "#a78bfa" : "#22c55e";
+  const topbarButtonColor = audience === "member" ? "#fff" : "#040e07";
 
   return (
-    <div className="landing-page-root" style={{ minHeight: "100vh", background: "#080c09" }}>
-      {/* Header */}
+    <div className="landing-page-root" data-audience={audience} style={{ minHeight: "100vh", background: "#080c09" }}>
       <style>{`
         html { scroll-behavior: smooth; }
         .landing-topbar-nav { display: none; }
@@ -36,7 +44,7 @@ export function LandingPage({ role = null }: LandingPageProps) {
           color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 500;
           white-space: nowrap; transition: color 0.2s;
         }
-        .landing-topbar-nav a:hover { color: #22c55e; }
+        .landing-topbar-nav a:hover { color: ${accentHover}; }
         @media (max-width: 767px) {
           .landing-header-inner { padding: 0 16px !important; }
           .landing-header-inner span { font-size: 16px !important; }
@@ -49,7 +57,7 @@ export function LandingPage({ role = null }: LandingPageProps) {
           zIndex: 50,
           background: "rgba(8,12,9,0.88)",
           backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(34,197,94,0.08)",
+          borderBottom: `1px solid ${accentBorder}`,
         }}
       >
         <div
@@ -66,15 +74,8 @@ export function LandingPage({ role = null }: LandingPageProps) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Logo className="h-8 w-8" />
-            <span
-              style={{
-                fontWeight: 800,
-                fontSize: "18px",
-                color: "#fff",
-                letterSpacing: "-0.02em",
-              }}
-            >
+            <Logo className="h-8 w-8" accent={audience === "member" ? "purple" : "green"} />
+            <span style={{ fontWeight: 800, fontSize: "18px", color: accentHover, letterSpacing: "-0.02em" }}>
               Progressio
             </span>
           </div>
@@ -84,23 +85,23 @@ export function LandingPage({ role = null }: LandingPageProps) {
             <a href="#inteligencia">Inteligencia</a>
             <a href="#how-it-works">Ako to funguje</a>
             <a href="#features">Funkcie</a>
-            <a href="#reviews">Recenzie</a>
             <a href="#pricing">Cenník</a>
+            <a href="#reviews">Recenzie</a>
           </nav>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div className="landing-hamburger-wrap">
               <LandingHamburgerNav />
             </div>
             {role ? (
-              <Link href={dashboardHref} className={cn(buttonVariants(), "inline-flex")}>
+              <Link href={dashboardHref} className={cn(buttonVariants(), "inline-flex")} style={{ background: topbarButtonBg, color: topbarButtonColor, borderColor: "transparent" }}>
                 Dashboard
               </Link>
             ) : (
               <>
                 <Link href="/login" className={cn(buttonVariants({ variant: "ghost" }), "inline-flex")}>
-                  Prihlasiť sa
+                  Prihlásiť sa
                 </Link>
-                <Link href="/register" className={cn(buttonVariants(), "inline-flex")}>
+                <Link href="/register" className={cn(buttonVariants(), "inline-flex")} style={{ background: topbarButtonBg, color: topbarButtonColor, borderColor: "transparent" }}>
                   Registrovať sa
                 </Link>
               </>
@@ -109,62 +110,54 @@ export function LandingPage({ role = null }: LandingPageProps) {
         </div>
       </header>
 
-      {/* Hero — sticky parallax zone: cards → merge → client mockup → trainer mockup */}
-      <section id="uvod" aria-label="Úvod">
-        <HeroParallaxZone role={role} dashboardHref={dashboardHref} />
-      </section>
+      {/* Hero — static, no storytelling; tabs Som tréner / Som člen, floating mockup by audience */}
+      <HeroParallaxZone
+        role={role}
+        dashboardHref={dashboardHref}
+        staticMode
+        audience={audience}
+        onAudienceChange={setAudience}
+      />
 
-      {/* Stats bar */}
+      {/* Stats strip (from test2) */}
       <section id="statistiky" aria-label="Štatistiky">
-        <LandingStats />
+        <LandingStatsStrip />
       </section>
 
-      {/* Intelligence / predictive analytics — key differentiator */}
+      <LandingAudienceTabs audience={audience} onAudienceChange={setAudience} label="Prehliadaš obsah pre" />
+
+      {/* Predikcia — iná pre trénera, iná pre člena */}
       <section id="inteligencia" aria-label="Inteligencia">
-        <LandingIntelligence />
+        <LandingIntelligence variant={audience} />
       </section>
-      <LandingCtaToPricing
-        title="Pripravený na pokrok?"
-        subtitle="Vyber si plán, ktorý ti sedí."
-      />
 
-      {/* How it works */}
+      <LandingAudienceTabs audience={audience} onAudienceChange={setAudience} compact label="Tréner alebo člen?" />
+
+      {/* Štyri kroky — iné pre trénera, iné pre člena */}
+
       <section id="how-it-works" aria-label="Ako to funguje">
-        <LandingHowItWorks />
+        <LandingHowItWorks variant={audience} />
       </section>
-      <LandingCtaToPricing
-        title="Začni jednoducho."
-        subtitle="Pozri cenník a vyber si tarif za pár minút."
-      />
 
-      {/* Features */}
+      {/* Všetko na jednom mieste — iné pre trénera, iné pre člena (bento) */}
       <section id="features" aria-label="Funkcie">
-        <LandingFeatures />
+        <LandingFeatures variant={audience} />
       </section>
-      <LandingCtaToPricing
-        title="Všetko v jednom."
-        subtitle="Žiadne skryté poplatky. Pozri cenník."
-      />
 
-      {/* Reviews */}
-      <section id="reviews" aria-label="Recenzie">
-        <LandingReviews />
-      </section>
-      <LandingCtaToPricing
-        title="Pripoj sa k nim."
-        subtitle="Vyber si plán a začni ešte dnes."
-      />
-
-      {/* Pricing */}
+      {/* Cenník (pôvodný landing) */}
       <section id="pricing" aria-label="Cenník">
         <LandingPricing />
       </section>
 
-      {/* Final CTA */}
-      <LandingCta role={role} dashboardHref={dashboardHref} />
+      {/* Testimonials */}
+      <section id="reviews" aria-label="Recenzie">
+        <LandingReviews variant={audience} />
+      </section>
 
-      {/* Footer */}
-      <LandingFooter />
+      {/* Finálna CTA */}
+      <LandingCta role={role} dashboardHref={dashboardHref} variant={audience} />
+
+      <LandingFooter variant={audience} />
     </div>
   );
 }

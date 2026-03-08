@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+type LandingFooterProps = { variant?: "trainer" | "member" };
+
 const productLinks = [
   { label: "Funkcie", href: "#features" },
   { label: "Ako to funguje", href: "#how-it-works" },
@@ -36,12 +38,17 @@ const FOOTER_CSS = `
   }
 `;
 
-export function LandingFooter() {
+export function LandingFooter({ variant = "trainer" }: LandingFooterProps) {
+  const isMember = variant === "member";
+  const accentBorder = isMember ? "rgba(167,139,250,0.08)" : "rgba(34,197,94,0.08)";
+  const accent = isMember ? "#a78bfa" : "#22c55e";
+  const accentGlow = isMember ? "rgba(167,139,250,0.6)" : "rgba(34,197,94,0.6)";
+
   return (
     <footer
       style={{
         background: "transparent",
-        borderTop: "1px solid rgba(34,197,94,0.08)",
+        borderTop: `1px solid ${accentBorder}`,
       }}
     >
       <style>{FOOTER_CSS}</style>
@@ -85,7 +92,7 @@ export function LandingFooter() {
                 margin: 0,
               }}
             >
-              Platforma pre trénerov a klientov. Sleduj pokrok, spravuj plány a
+              Platforma pre trénerov a členov. Sleduj pokrok, spravuj plány a
               dosahovaj výsledky.
             </p>
           </div>
@@ -208,8 +215,8 @@ export function LandingFooter() {
                 width: "6px",
                 height: "6px",
                 borderRadius: "50%",
-                background: "#22c55e",
-                boxShadow: "0 0 8px rgba(34,197,94,0.6)",
+                background: accent,
+                boxShadow: `0 0 8px ${accentGlow}`,
               }}
             />
             <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>

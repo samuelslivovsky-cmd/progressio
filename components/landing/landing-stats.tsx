@@ -20,8 +20,8 @@ function useVisible(threshold = 0.2) {
 
 const stats = [
   { number: "100+", label: "aktívnych trénerov" },
-  { number: "500+", label: "spokojných klientov" },
-  { number: "0 €", label: "pre klientov navždy" },
+  { number: "500+", label: "spokojných členov" },
+  { number: "0 €", label: "pre členov navždy" },
   { number: "4.9", label: "priemerné hodnotenie" },
 ];
 

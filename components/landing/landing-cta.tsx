@@ -22,6 +22,7 @@ function useVisible(threshold = 0.2) {
 type LandingCtaProps = {
   role?: "TRAINER" | "CLIENT" | null;
   dashboardHref: string;
+  variant?: "trainer" | "member";
 };
 
 const CTA_CSS = `
@@ -33,8 +34,12 @@ const CTA_CSS = `
   }
 `;
 
-export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
+export function LandingCta({ role, dashboardHref, variant = "trainer" }: LandingCtaProps) {
   const { ref, visible } = useVisible(0.2);
+  const isMember = variant === "member";
+  const accent = isMember ? "#a78bfa" : "#22c55e";
+  const accentLight = isMember ? "#c4b5fd" : "#4ade80";
+  const accentRgba = isMember ? "167,139,250" : "34,197,94";
 
   return (
     <div
@@ -56,8 +61,7 @@ export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
           transform: "translate(-50%, -50%)",
           width: "600px",
           height: "300px",
-          background:
-            "radial-gradient(ellipse at center, rgba(34,197,94,0.09) 0%, transparent 70%)",
+          background: `radial-gradient(ellipse at center, rgba(${accentRgba},0.09) 0%, transparent 70%)`,
           pointerEvents: "none",
         }}
       />
@@ -78,8 +82,8 @@ export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
             display: "inline-flex",
             alignItems: "center",
             gap: "8px",
-            background: "rgba(34,197,94,0.08)",
-            border: "1px solid rgba(34,197,94,0.18)",
+            background: isMember ? "rgba(167,139,250,0.08)" : "rgba(34,197,94,0.08)",
+            border: isMember ? "1px solid rgba(167,139,250,0.18)" : "1px solid rgba(34,197,94,0.18)",
             borderRadius: "20px",
             padding: "5px 14px",
             marginBottom: "28px",
@@ -92,15 +96,15 @@ export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
               width: "6px",
               height: "6px",
               borderRadius: "50%",
-              background: "#22c55e",
-              boxShadow: "0 0 8px rgba(34,197,94,0.7)",
+              background: accent,
+              boxShadow: isMember ? "0 0 8px rgba(167,139,250,0.7)" : "0 0 8px rgba(34,197,94,0.7)",
             }}
           />
           <span
             style={{
               fontSize: "12px",
               fontWeight: 600,
-              color: "#4ade80",
+              color: accentLight,
               letterSpacing: "0.06em",
             }}
           >
@@ -137,7 +141,7 @@ export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
         >
           {role
             ? "Pokračuj do svojho dashboardu a pokračuj v práci."
-            : "Zaregistruj sa ako tréner alebo klient. Bezplatne, bez kreditnej karty, do 2 minút."}
+            : "Zaregistruj sa ako tréner alebo člen. Bezplatne, bez kreditnej karty, do 2 minút."}
         </p>
 
         <div
@@ -157,8 +161,8 @@ export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
               style={{
                 display: "inline-block",
                 padding: "15px 36px",
-                background: "#22c55e",
-                color: "#020d05",
+                background: accent,
+                color: isMember ? "#fff" : "#020d05",
                 borderRadius: "12px",
                 fontSize: "15px",
                 fontWeight: 700,
@@ -175,8 +179,8 @@ export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
                 style={{
                   display: "inline-block",
                   padding: "15px 36px",
-                  background: "#22c55e",
-                  color: "#020d05",
+                  background: accent,
+                  color: isMember ? "#fff" : "#020d05",
                   borderRadius: "12px",
                   fontSize: "15px",
                   fontWeight: 700,

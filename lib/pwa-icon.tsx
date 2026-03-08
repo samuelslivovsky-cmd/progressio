@@ -66,6 +66,12 @@ export function createPwaIconResponse(size: number) {
         />
       </div>
     ),
-    { width: size, height: size }
+    {
+      width: size,
+      height: size,
+      headers: {
+        "Cache-Control": "public, max-age=604800, immutable",
+      },
+    }
   );
 }

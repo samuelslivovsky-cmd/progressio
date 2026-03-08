@@ -44,7 +44,7 @@ function ClientMockup() {
   return (
     <div style={{ ...cardBase, borderRadius: "20px", padding: "20px", border: "1px solid rgba(34,197,94,0.22)", boxShadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.08)" }}>
       <div style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "16px" }}>
-        Dashboard — Klient
+        Dashboard — Člen
       </div>
 
       {/* Stats row */}
@@ -189,7 +189,7 @@ function ShowcasePanel({ title, subtitle, side, children, visible }: {
         transition: "opacity 0.7s ease-out 0.15s, transform 0.7s ease-out 0.15s",
       }}>
         <div style={{ fontSize: "11px", fontWeight: 600, color: "#22c55e", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "12px" }}>
-          {side === "left" ? "Pre klientov" : "Pre trénerov"}
+          {side === "left" ? "Pre členov" : "Pre trénerov"}
         </div>
         <h2 style={{ fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 700, color: "#fff", lineHeight: 1.2, marginBottom: "16px" }}>{title}</h2>
         <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.5)", lineHeight: 1.7 }}>{subtitle}</p>

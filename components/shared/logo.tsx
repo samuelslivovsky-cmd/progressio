@@ -5,9 +5,15 @@ const gradientId = "progressioLogoGradient";
 interface LogoProps {
   className?: string;
   size?: number;
+  /** When "purple", logo uses violet gradient; default green */
+  accent?: "green" | "purple";
 }
 
-export function Logo({ className, size }: LogoProps) {
+export function Logo({ className, size, accent = "green" }: LogoProps) {
+  const isPurple = accent === "purple";
+  const startColor = isPurple ? "#c4b5fd" : "#4ade80";
+  const endColor = isPurple ? "#a78bfa" : "#22c55e";
+
   return (
     <svg
       {...(size != null ? { width: size, height: size } : {})}
@@ -18,8 +24,8 @@ export function Logo({ className, size }: LogoProps) {
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#4ade80" />
-          <stop offset="100%" stopColor="#22c55e" />
+          <stop offset="0%" stopColor={startColor} />
+          <stop offset="100%" stopColor={endColor} />
         </linearGradient>
       </defs>
       <circle

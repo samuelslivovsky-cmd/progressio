@@ -16,8 +16,8 @@ const SECTIONS = [
   { id: "inteligencia", label: "Inteligencia" },
   { id: "how-it-works", label: "Ako to funguje" },
   { id: "features", label: "Funkcie" },
-  { id: "reviews", label: "Recenzie" },
   { id: "pricing", label: "Cenník" },
+  { id: "reviews", label: "Recenzie" },
 ] as const;
 
 export function LandingHamburgerNav() {

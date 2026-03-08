@@ -25,7 +25,7 @@ function useVisible(threshold = 0.1) {
 const plans = [
   {
     id: "client-free",
-    name: "Klient",
+    name: "Člen",
     price: "0",
     period: "navždy",
     desc: "S trénerom — logging a plány",
@@ -43,7 +43,7 @@ const plans = [
   },
   {
     id: "client-ai",
-    name: "Klient AI",
+    name: "Člen AI",
     price: "4.99",
     period: "mesiac",
     desc: "Solo — bez trénera, s AI koučom",
@@ -52,7 +52,7 @@ const plans = [
     highlighted: false,
     aiTier: true,
     mobileHighlights: [
-      { label: "Všetko z plánu Klient", tooltip: "Všetky funkcie pre klienta — denník stravy, tréningy, váha, progress fotky. Bez trénera, AI preberá jeho úlohu." },
+      { label: "Všetko z plánu Člen", tooltip: "Všetky funkcie pre člena — denník stravy, tréningy, váha, progress fotky. Bez trénera, AI preberá jeho úlohu." },
       { label: "Týždenné AI hodnotenie", tooltip: "Každý týždeň AI zhodnotí tvoj týždeň (adherencia, kalórie, váha) a napíše konkrétne odporúčania." },
       { label: "Výpočet TDEE a makier", tooltip: "Systém ti vypočíta denný výdaj energie (TDEE) a odporúča denné kalórie a rozloženie makier podľa cieľa." },
       { label: "Chat s AI koučom 24/7", tooltip: "Pýtaš sa čokoľvek (napr. „bolí ma chrbát, mám cvičiť?“). AI odpovedá na základe tvojich dát a plánu." },
@@ -251,7 +251,7 @@ export function LandingPricing() {
               {/* Two-group label */}
               <div style={{ display: "flex", flexDirection: "column", gap: "20px", paddingTop: "8px" }}>
                 <div>
-                  <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "4px" }}>Klienti</div>
+                  <div style={{ fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "4px" }}>Členovia</div>
                   <div style={{ width: "32px", height: "1px", background: "rgba(255,255,255,0.08)" }} />
                 </div>
                 <div>
@@ -601,7 +601,7 @@ export function LandingPricing() {
         </div>
 
         <p style={{ textAlign: "center", marginTop: "20px", fontSize: "13px", color: "rgba(255,255,255,0.28)" }}>
-          Klient AI a Tréner Pro bez záväzkov — zruš kedykoľvek.
+          Člen AI a Tréner Pro bez záväzkov — zruš kedykoľvek.
         </p>
       </div>
     </div>

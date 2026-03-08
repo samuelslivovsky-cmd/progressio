@@ -2,7 +2,7 @@ import { Users, Dumbbell } from "lucide-react";
 
 const stats = [
   { value: "100+", label: "trénerov" },
-  { value: "500+", label: "aktívnych klientov" },
+  { value: "500+", label: "aktívnych členov" },
 ];
 
 export function LandingTrainers() {
@@ -12,7 +12,7 @@ export function LandingTrainers() {
         Kto Progressio používa
       </h2>
       <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
-        Tréneri a klienti z celej Slovenska spravujú plány, pokrok a predikcie na jednej platforme.
+        Tréneri a členovia z celej Slovenska spravujú plány, pokrok a predikcie na jednej platforme.
       </p>
       <div className="flex flex-wrap justify-center gap-12 max-w-2xl mx-auto">
         {stats.map((s) => (

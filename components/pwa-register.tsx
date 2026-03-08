@@ -6,18 +6,18 @@ export function PwaRegister() {
   useEffect(() => {
     if (
       typeof window === "undefined" ||
-      !("serviceWorker" in navigator) ||
-      process.env.NODE_ENV !== "production"
+      !("serviceWorker" in navigator)
     ) {
       return;
     }
     window.navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { scope: "/" })
       .then((reg) => {
-        // Optional: check for updates
         reg.update();
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn("[PWA] Service worker registration failed:", err);
+      });
   }, []);
   return null;
 }

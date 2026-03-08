@@ -144,7 +144,7 @@ function ClientMockup({ mobile = false }: { mobile?: boolean }) {
           <div style={{ width: "52px", height: "5px", background: "rgba(255,255,255,0.1)", borderRadius: "3px" }} />
         </div>
       )}
-      <div style={{ fontSize: mobile ? "9px" : "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: mobile ? "10px" : "18px" }}>Dashboard — Klient</div>
+      <div style={{ fontSize: mobile ? "9px" : "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: mobile ? "10px" : "18px" }}>Dashboard — Člen</div>
       {mobile ? (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "10px" }}>
@@ -282,7 +282,7 @@ function AiMockup({ mobile = false }: { mobile?: boolean }) {
         </div>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: mobile ? "10px" : "16px", flexWrap: "wrap", gap: "6px" }}>
-        <div style={{ fontSize: mobile ? "9px" : "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Dashboard — Klient AI</div>
+        <div style={{ fontSize: mobile ? "9px" : "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Dashboard — Člen AI</div>
         <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.22)", borderRadius: "20px", padding: "3px 8px" }}>
           <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 6px rgba(167,139,250,0.9)", animation: "hpz-live-dot 2s ease-in-out infinite" }} />
           <span style={{ fontSize: mobile ? "8px" : "10px", color: "#c4b5fd", fontWeight: 600 }}>AI aktívny</span>
@@ -507,13 +507,13 @@ function PhaseDots({
 }) {
   const phasesDesktop = [
     { label: "Úvod",    range: [0,    0.18] as [number, number] },
-    { label: "Klient",  range: [0.18, 0.44] as [number, number] },
+    { label: "Člen",  range: [0.18, 0.44] as [number, number] },
     { label: "AI Kouč", range: [0.44, 0.62] as [number, number] },
     { label: "Tréner",  range: [0.62, 1.01] as [number, number] },
   ];
   const phasesTablet = [
     { label: "Úvod",   range: [0,    0.18] as [number, number] },
-    { label: "Klient", range: [0.18, 0.36] as [number, number] },
+    { label: "Člen", range: [0.18, 0.36] as [number, number] },
     { label: "Tréner", range: [0.36, 1.01] as [number, number] },
   ];
   const phases = isTablet ? phasesTablet : phasesDesktop;
@@ -577,46 +577,51 @@ function MockupWrap({ children, isMobile, windowWidth }: { children: React.React
   );
 }
 
-type Props = { role?: "TRAINER" | "CLIENT" | null; dashboardHref: string };
+type Props = {
+  role?: "TRAINER" | "CLIENT" | null;
+  dashboardHref: string;
+  staticMode?: boolean;
+  audience?: "trainer" | "member";
+  onAudienceChange?: (a: "trainer" | "member") => void;
+};
 
-export function HeroParallaxZone({ role, dashboardHref }: Props) {
+export function HeroParallaxZone({ role, dashboardHref, staticMode = false, audience = "trainer", onAudienceChange }: Props) {
   const [progress, setProgress] = useState(0);
   const [windowWidth, setWindowWidth] = useState(1200);
-  // Locked at mount — prevents mobile browser chrome show/hide from affecting scroll progress or heights
   const [viewportH, setViewportH] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
 
   const isPhone = windowWidth < 768;
   const isTablet = windowWidth >= 768 && windowWidth < 1024;
-  const isMobile = isPhone; // legacy: mobile = phone for layout
+  const isMobile = isPhone;
 
   useEffect(() => {
+    const updateWidth = () => setWindowWidth(window.innerWidth);
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
+
+  useEffect(() => {
+    if (staticMode) return;
     const el = sectionRef.current;
     if (!el) return;
-
-    // Capture ONCE at mount. On mobile, window.innerHeight changes as the browser chrome
-    // shows/hides; locking it here keeps scroll progress and layout stable.
     const vh = window.innerHeight;
     setViewportH(vh);
-
-    const scrollable = (TOTAL_VH - 1) * vh; // locked, not recomputed on resize
-
+    const scrollable = (TOTAL_VH - 1) * vh;
     const updateScroll = () => {
-      const sectionTop = window.scrollY + el.getBoundingClientRect().top;
+      const sectionTop = el.getBoundingClientRect().top + window.scrollY;
       setProgress(clamp((window.scrollY - sectionTop) / scrollable));
     };
-    const updateWidth = () => setWindowWidth(window.innerWidth);
-    const onResize = () => { updateScroll(); updateWidth(); };
-
     updateScroll();
-    updateWidth();
     window.addEventListener("scroll", updateScroll, { passive: true });
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("scroll", updateScroll);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
+    return () => window.removeEventListener("scroll", updateScroll);
+  }, [staticMode]);
+
+  useEffect(() => {
+    if (!staticMode) return;
+    setViewportH(window.innerHeight);
+  }, [staticMode]);
 
   // ── Animation values ──────────────────────────────────────────────────────
   const textOpacity   = 1 - seg(progress, 0.05, 0.12);
@@ -657,6 +662,48 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
     alignItems: "center",
   });
 
+  // ── Static hero: no storytelling, no big card; centered text + tabs ───────────
+  if (staticMode) {
+    const tabBase = { padding: "10px 22px", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer", border: "none", transition: "background .2s, color .2s" } as const;
+    const heroAccent = audience === "member" ? "purple" : "green";
+    const ctaBg = audience === "member" ? "#a78bfa" : "#22c55e";
+    const ctaColor = audience === "member" ? "#fff" : "#040e07";
+    return (
+      <section id="uvod" aria-label="Úvod" style={{ minHeight: "100vh", position: "relative" }}>
+        <style>{HERO_CSS}</style>
+        <div style={{ position: "sticky", top: 0, minHeight: "100vh", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <HeroBackground mergeProgress={0} accent={heroAccent} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.4))", pointerEvents: "none" }} />
+          <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: "720px", padding: isMobile ? "60px 24px 40px" : "0 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ display: "inline-flex", gap: 10, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: 6, marginBottom: 28 }}>
+              <button type="button" onClick={() => onAudienceChange?.("trainer")} style={{ ...tabBase, background: audience === "trainer" ? "#22c55e" : "rgba(255,255,255,.06)", color: audience === "trainer" ? "#040e07" : "rgba(255,255,255,.55)" }}>Som tréner</button>
+              <button type="button" onClick={() => onAudienceChange?.("member")} style={{ ...tabBase, background: audience === "member" ? "#a78bfa" : "rgba(255,255,255,.06)", color: audience === "member" ? "#fff" : "rgba(255,255,255,.55)" }}>Som člen</button>
+            </div>
+            <h1 style={{ fontSize: isMobile ? "clamp(32px,8vw,48px)" : "clamp(38px,4.5vw,56px)", fontWeight: 900, color: "#fff", lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: 16 }}>
+              Platforma pre {audience === "trainer" ? "trénerov" : "členov"}.
+            </h1>
+            <h1 style={{ fontSize: isMobile ? "clamp(32px,8vw,48px)" : "clamp(38px,4.5vw,56px)", fontWeight: 900, color: "#fff", lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: 24 }}>
+              Na jednom mieste.
+            </h1>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,.55)", lineHeight: 1.65, marginBottom: 32, maxWidth: 480, marginInline: "auto" }}>
+              {audience === "trainer" ? "Vytváraj plány, sleduj členov v reálnom čase. Systém upozorní na problémy skôr, než nastanú." : "Loguj jedlo, tréningy a váhu. S trénerom alebo s AI koučom — všetko na jednom mieste."}
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
+              {role ? (
+                <Link href={dashboardHref} className={cn(buttonVariants({ size: "lg" }), "inline-flex items-center gap-2")} style={{ background: ctaBg, color: ctaColor, borderColor: "transparent" }}>Prejsť do dashboardu <ChevronRight className="size-4 shrink-0" /></Link>
+              ) : (
+                <>
+                  <Link href="/register" className={cn(buttonVariants({ size: "lg" }), "inline-flex items-center gap-2")} style={{ background: ctaBg, color: ctaColor, borderColor: "transparent" }}>Začať zadarmo <ChevronRight className="size-4 shrink-0" /></Link>
+                  <Link href="/login" className={cn(buttonVariants({ size: "lg", variant: "outline" }), "inline-flex")}>Prihlásiť sa</Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       ref={sectionRef}
@@ -687,13 +734,13 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
             {!isMobile && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.18)", borderRadius: "24px", padding: "6px 16px", marginBottom: "32px", animation: "hpz-badge-pulse 3s ease-in-out infinite" }}>
                 <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 10px rgba(34,197,94,1)" }} />
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "#4ade80", letterSpacing: "0.05em" }}>Pre trénerov, klientov aj samostatných</span>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#4ade80", letterSpacing: "0.05em" }}>Pre trénerov, členov aj samostatných</span>
               </div>
             )}
             <h1 style={{ fontSize: isMobile ? "clamp(32px, 9vw, 48px)" : "clamp(38px, 5.5vw, 72px)", fontWeight: 900, color: "#fff", lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: isMobile ? "8px" : "12px" }}>
               Platforma pre{" "}
               <FlipWords
-                words={["trénerov", "klientov", "všetkých"]}
+                words={["trénerov", "členov", "všetkých"]}
                 duration={3200}
                 className="bg-linear-to-r from-green-400 via-green-300 to-emerald-200 bg-clip-text text-transparent px-0"
               />
@@ -702,7 +749,7 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
               Na jednom mieste.
             </h1>
             <p style={{ fontSize: isMobile ? "15px" : "clamp(16px, 1.8vw, 20px)", color: "rgba(255,255,255,0.52)", lineHeight: 1.7, marginBottom: isMobile ? "28px" : "40px", maxWidth: isMobile ? "100%" : "600px", marginInline: "auto" }}>
-              {isMobile ? "Tréneri: prehľad a plány na jednom mieste. Klienti: logovanie a pokrok — s trénerom alebo s AI koučom. Jedna platforma pre všetkých." : "Tréneri majú prehľad nad klientmi a plány na jednom mieste. Klienti logujú a sledujú pokrok — s trénerom alebo s AI koučom. Jedna platforma pre všetkých."}
+              {isMobile ? "Tréneri: prehľad a plány na jednom mieste. Členovia: logovanie a pokrok — s trénerom alebo s AI koučom. Jedna platforma pre všetkých." : "Tréneri majú prehľad nad členmi a plány na jednom mieste. Členovia logujú a sledujú pokrok — s trénerom alebo s AI koučom. Jedna platforma pre všetkých."}
             </p>
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
               {role ? (
@@ -722,7 +769,7 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none", opacity: clientOpacity, transform: `translateY(${clientY}px)` }}>
             <div style={splitGrid()}>
               <SideCopy
-                eyebrow="Pre klientov"
+                eyebrow="Pre členov"
                 headline={"Tvoj pokrok.\nKaždý deň viditeľný."}
                 sub={isMobile ? "Loguj váhu, jedlo a tréning. Tréner vidí všetko naživo." : "Loguj váhu, jedlo a tréning. Sleduj svoju sériu, trendy a ciele. Tréner vidí všetko v reálnom čase — bez správ, bez tabuliek."}
                 bullets={["14-dňová séria bez prerušenia", "−2.1 kg za posledný mesiac", "Tréner vidí tvoj pokrok naživo"]}
@@ -742,7 +789,7 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none", opacity: aiOpacity, transform: `translateY(${aiY}px)` }}>
             <div style={splitGrid()}>
               <SideCopy
-                eyebrow="Klient AI — 4,99 €/mes"
+                eyebrow="Člen AI — 4,99 €/mes"
                 headline={"Bez trénera?\nMáš AI kouča."}
                 sub={isMobile ? "AI analyzuje tvoje dáta a funguje ako osobný kouč — 24/7." : "AI analyzuje tvoje dáta každý deň a funguje ako tvoj osobný kouč — dostupný 24/7. Stojí menej ako jedna káva týždenne."}
                 bullets={["Vypočíta TDEE a makrá podľa teba", "Deteguje plató a navrhne zmenu", "Odpovedá s kontextom tvojich dát"]}
