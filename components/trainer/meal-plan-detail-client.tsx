@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Utensils, Plus, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/shared/empty-state";
 import { AddMealItemDialog } from "./add-meal-item-dialog";
 
 type DeleteConfirm = "day" | "meal" | "item" | null;
@@ -145,13 +146,11 @@ export function MealPlanDetailClient({ mealPlan }: MealPlanDetailClientProps) {
   }
 
   const emptyState = (
-    <Card>
-      <CardContent className="py-12 text-center text-muted-foreground">
-        <Utensils className="h-12 w-12 mx-auto mb-3 opacity-50" />
-        <p className="font-medium">Žiadne dni v pláne</p>
-        <p className="text-sm mt-1">Pridaj prvý deň kliknutím na tlačidlo nižšie.</p>
-      </CardContent>
-    </Card>
+    <EmptyState
+      icon={<Utensils className="h-12 w-12" />}
+      title="Žiadne dni v pláne"
+      description="Pridaj prvý deň kliknutím na tlačidlo nižšie."
+    />
   );
 
   return (

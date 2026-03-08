@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -343,12 +344,10 @@ export function TrainingPlanDetailClient({
         {/* Hlavný obsah: vybraný deň */}
         <div className="lg:col-span-2 space-y-4">
           {!selectedDay ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>Žiadne dni. Pridaj deň tlačidlom vyššie.</p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={<Dumbbell className="h-12 w-12" />}
+              title="Žiadne dni. Pridaj deň tlačidlom vyššie."
+            />
           ) : selectedPlanDay?.isRestDay ? (
             <Card>
               <CardHeader className="pb-2 flex flex-row items-center justify-between">

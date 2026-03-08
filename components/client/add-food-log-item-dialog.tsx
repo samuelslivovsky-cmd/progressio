@@ -258,41 +258,43 @@ export function AddFoodLogItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden gap-2 sm:max-w-lg">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Pridať jedlo</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="line-clamp-2 sm:line-clamp-none">
             Vyhľadaj existujúcu potravinu, pridaj len názov a gramáž, alebo vytvor novú (vrátane načítania čiarového kódu).
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-1 border-b">
+        <div className="flex shrink-0 gap-1 border-b">
           {tabs.map((t) => (
             <Button
               key={t.id}
               type="button"
               variant={tab === t.id ? "secondary" : "ghost"}
               size="sm"
-              className="flex-1"
+              className="min-w-0 flex-1 px-2 sm:px-3"
               onClick={() => {
                 setTab(t.id);
                 setError(null);
               }}
+              title={t.label}
             >
               {t.icon}
-              <span className="ml-1.5">{t.label}</span>
+              <span className="ml-1.5 hidden sm:inline">{t.label}</span>
             </Button>
           ))}
         </div>
 
         {error && (
-          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+          <div className="shrink-0 text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
             {error}
           </div>
         )}
 
+        <div className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1">
         {tab === "search" && (
-          <form onSubmit={handleAddFromSearch}>
+          <form onSubmit={handleAddFromSearch} className="flex flex-col">
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>Hľadať jedlo</Label>
@@ -309,7 +311,7 @@ export function AddFoodLogItemDialog({
                   />
                 </div>
                 {foods.length > 0 && !selectedFoodId && (
-                  <ul className="border rounded-md max-h-48 overflow-auto divide-y">
+                  <ul className="border rounded-md max-h-40 overflow-auto divide-y sm:max-h-48">
                     {foods.map((f) => (
                       <li key={f.id}>
                         <button
@@ -377,6 +379,7 @@ export function AddFoodLogItemDialog({
                       type="button"
                       variant={mealType === opt.value ? "default" : "outline"}
                       size="sm"
+                      className="text-xs sm:text-sm"
                       onClick={() => setMealType(opt.value)}
                     >
                       {opt.label}
@@ -385,7 +388,7 @@ export function AddFoodLogItemDialog({
                 </div>
               </div>
             </div>
-            <DialogFooter className="mt-4">
+            <DialogFooter className="mt-4 shrink-0">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Zrušiť
               </Button>
@@ -400,7 +403,7 @@ export function AddFoodLogItemDialog({
         )}
 
         {tab === "simple" && (
-          <form onSubmit={handleAddSimple}>
+          <form onSubmit={handleAddSimple} className="flex flex-col">
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label htmlFor="simple-name">Názov potraviny</Label>
@@ -431,6 +434,7 @@ export function AddFoodLogItemDialog({
                       type="button"
                       variant={mealType === opt.value ? "default" : "outline"}
                       size="sm"
+                      className="text-xs sm:text-sm"
                       onClick={() => setMealType(opt.value)}
                     >
                       {opt.label}
@@ -442,7 +446,7 @@ export function AddFoodLogItemDialog({
                 Potravina sa vytvorí bez výživových údajov. Môžeš neskôr doplniť alebo vytvoriť plnú verziu cez „Vytvoriť potravinu”.
               </p>
             </div>
-            <DialogFooter className="mt-4">
+            <DialogFooter className="mt-4 shrink-0">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Zrušiť
               </Button>
@@ -457,8 +461,8 @@ export function AddFoodLogItemDialog({
         )}
 
         {tab === "create" && (
-          <form onSubmit={handleCreateAndAdd}>
-            <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+          <form onSubmit={handleCreateAndAdd} className="flex flex-col">
+            <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>Čiarový kód (voliteľné)</Label>
                 <div className="flex gap-2">
@@ -466,11 +470,13 @@ export function AddFoodLogItemDialog({
                     placeholder="EAN / QR alebo zadaj ručne"
                     value={barcode}
                     onChange={(e) => setBarcode(e.target.value)}
+                    className="min-w-0"
                   />
                   <Button
                     type="button"
                     variant="outline"
                     size="icon"
+                    className="shrink-0"
                     onClick={() => setShowScanner((s) => !s)}
                     title="Skenovať"
                   >
@@ -498,7 +504,7 @@ export function AddFoodLogItemDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="create-kcal">Energie (kcal) *</Label>
                   <Input
@@ -523,7 +529,7 @@ export function AddFoodLogItemDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="create-protein">Bielkoviny (g) *</Label>
                   <Input
@@ -548,7 +554,7 @@ export function AddFoodLogItemDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="create-carbs">Sacharidy (g)</Label>
                   <Input
@@ -594,6 +600,7 @@ export function AddFoodLogItemDialog({
                       type="button"
                       variant={mealType === opt.value ? "default" : "outline"}
                       size="sm"
+                      className="text-xs sm:text-sm"
                       onClick={() => setMealType(opt.value)}
                     >
                       {opt.label}
@@ -602,7 +609,7 @@ export function AddFoodLogItemDialog({
                 </div>
               </div>
             </div>
-            <DialogFooter className="mt-4">
+            <DialogFooter className="mt-4 shrink-0">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Zrušiť
               </Button>
@@ -612,6 +619,7 @@ export function AddFoodLogItemDialog({
             </DialogFooter>
           </form>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );

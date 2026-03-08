@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Utensils, Plus, Trash2, ArrowLeft, Pencil, UserPlus, Copy } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/shared/empty-state";
 import { AddMealItemDialog } from "./add-meal-item-dialog";
 import { format } from "date-fns";
 
@@ -316,13 +317,11 @@ export function MealPlanEditor({ mealPlan: initialPlan, assignmentCount, clients
         {/* Main: selected day meals */}
         <div className="lg:col-span-2 space-y-4">
           {!selectedDay ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <Utensils className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="font-medium">Žiadne dni v pláne</p>
-                <p className="text-sm mt-1">Pridaj prvý deň kliknutím na „Pridať deň“.</p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={<Utensils className="h-12 w-12" />}
+              title="Žiadne dni v pláne"
+              description="Pridaj prvý deň kliknutím na „Pridať deň“."
+            />
           ) : (
             <>
               {selectedDay.meals.length === 0 ? (

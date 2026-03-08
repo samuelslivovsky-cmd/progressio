@@ -14,6 +14,8 @@ import { EditExerciseInPlanDialog } from "@/components/client/edit-exercise-in-p
 import { capitalizeWords } from "@/lib/utils";
 import { ArrowLeft, PlusCircle, Pencil, Trash2, Dumbbell, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 
 export default function EditClientPlanPage() {
   const params = useParams();
@@ -69,16 +71,8 @@ export default function EditClientPlanPage() {
   if (isLoading || !plan) {
     return (
       <div className="space-y-6">
-        <Link href="/client/workout/my-plans">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Načítavam plán…
-          </CardContent>
-        </Card>
+        <PageHeader title="Plán" backHref="/client/workout/my-plans" />
+        <EmptyState title="Načítavam plán…" />
       </div>
     );
   }

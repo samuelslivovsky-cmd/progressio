@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddMealItemDialog } from "@/components/trainer/add-meal-item-dialog";
-import { Plus, Trash2, Utensils, Search, Pencil } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { SearchInput } from "@/components/shared/search-input";
+import { Plus, Trash2, Utensils, Pencil } from "lucide-react";
 
 const SEARCH_DEBOUNCE_MS = 200;
 
@@ -83,15 +85,12 @@ export function MealTemplatesList() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Hľadaj jedlo..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          placeholder="Hľadaj jedlo..."
+          value={searchInput}
+          onChange={setSearchInput}
+          className="max-w-sm flex-1 min-w-[200px]"
+        />
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" />
           Nové jedlo
@@ -99,21 +98,19 @@ export function MealTemplatesList() {
       </div>
 
       {filteredTemplates.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <Utensils className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">
-              {templates.length === 0
-                ? "Žiadne uložené jedlá"
-                : "Žiadne jedlá nevyhovujú hľadaniu"}
-            </p>
-            <p className="text-sm mt-1">
-              {templates.length === 0
-                ? "Vytvor jedlo a pridaj do neho potraviny. Potom ho môžeš jedným klikom pridať do ľubovoľného dňa v jedálničku."
-                : "Skús zmeniť hľadaný výraz."}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Utensils className="h-12 w-12" />}
+          title={
+            templates.length === 0
+              ? "Žiadne uložené jedlá"
+              : "Žiadne jedlá nevyhovujú hľadaniu"
+          }
+          description={
+            templates.length === 0
+              ? "Vytvor jedlo a pridaj do neho potraviny. Potom ho môžeš jedným klikom pridať do ľubovoľného dňa v jedálničku."
+              : "Skús zmeniť hľadaný výraz."
+          }
+        />
       ) : (
         <div className="space-y-3">
           {filteredTemplates.map((t) => {

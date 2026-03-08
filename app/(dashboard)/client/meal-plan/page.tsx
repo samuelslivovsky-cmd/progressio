@@ -1,8 +1,9 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
-import { Card, CardContent } from "@/components/ui/card";
 import { MealPlanView } from "@/components/client/meal-plan-view";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import { Utensils } from "lucide-react";
 
 export default function ClientMealPlanPage() {
@@ -14,12 +15,8 @@ export default function ClientMealPlanPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Môj jedálniček</h1>
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Načítavam…
-          </CardContent>
-        </Card>
+        <PageHeader title="Môj jedálniček" />
+        <EmptyState title="Načítavam…" />
       </div>
     );
   }
@@ -27,23 +24,19 @@ export default function ClientMealPlanPage() {
   if (!mealPlan) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Môj jedálniček</h1>
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <Utensils className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">Nemáš priradený jedálniček</p>
-            <p className="text-sm mt-1">
-              Tréner ti môže priradiť plán v tvojom profile. Obráť sa na neho.
-            </p>
-          </CardContent>
-        </Card>
+        <PageHeader title="Môj jedálniček" />
+        <EmptyState
+          icon={<Utensils className="h-12 w-12" />}
+          title="Nemáš priradený jedálniček"
+          description="Tréner ti môže priradiť plán v tvojom profile. Obráť sa na neho."
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Môj jedálniček</h1>
+      <PageHeader title="Môj jedálniček" />
       <MealPlanView
         mealPlan={{
           id: mealPlan.id,

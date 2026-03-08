@@ -5,9 +5,10 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronRight, Scale, Dumbbell, Utensils } from "lucide-react";
+import { ChevronRight, Scale, Dumbbell, Utensils } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { SearchInput } from "@/components/shared/search-input";
 import type { Profile, WeightLog, Measurement, TrainingPlanAssignment, MealPlanAssignment, TrainingPlan, MealPlan } from "@prisma/client";
 
 type ClientWithData = Profile & {
@@ -31,24 +32,20 @@ export function ClientsTable({ clients }: ClientsTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Hľadaj klienta..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <SearchInput
+        placeholder="Hľadaj klienta..."
+        value={search}
+        onChange={setSearch}
+      />
 
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            {clients.length === 0
+        <EmptyState
+          title={
+            clients.length === 0
               ? "Zatiaľ nemáš žiadnych klientov. Pridaj prvého kliknutím na tlačidlo vyššie."
-              : "Žiadni klienti nevyhovujú hľadaniu."}
-          </CardContent>
-        </Card>
+              : "Žiadni klienti nevyhovujú hľadaniu."
+          }
+        />
       ) : (
         <div className="grid gap-3">
           {filtered.map((client) => {

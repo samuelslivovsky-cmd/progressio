@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Utensils, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/shared/empty-state";
 
 const MEAL_LABELS: Record<string, string> = {
   breakfast: "Raňajky",
@@ -70,13 +71,7 @@ export function ClientFoodLogView({ clientId, clientName }: ClientFoodLogViewPro
   const totalCal = items.reduce((sum: number, i: FoodLogItem) => sum + itemCalories(i), 0);
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Načítavam…
-        </CardContent>
-      </Card>
-    );
+    return <EmptyState title="Načítavam…" />;
   }
 
   return (
@@ -121,10 +116,11 @@ export function ClientFoodLogView({ clientId, clientName }: ClientFoodLogViewPro
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <Utensils className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">Klient v tento deň nezadal žiadne jedlá</p>
-            </div>
+            <EmptyState
+              wrapInCard={false}
+              icon={<Utensils className="h-12 w-12" />}
+              title="Klient v tento deň nezadal žiadne jedlá"
+            />
           ) : (
             <div className="space-y-6">
               {byMeal.map(({ mealType, label, items: mealItems }) => {

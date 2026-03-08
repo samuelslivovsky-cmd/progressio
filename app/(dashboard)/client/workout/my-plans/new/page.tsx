@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
 import { toast } from "sonner";
 
 export default function NewClientPlanPage() {
@@ -36,20 +36,11 @@ export default function NewClientPlanPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link
-          href="/client/workout/my-plans"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nový tréningový plán</h1>
-          <p className="text-muted-foreground text-sm">
-            Názov a počet dní. Cvičenia pridáš v ďalšom kroku.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Nový tréningový plán"
+        backHref="/client/workout/my-plans"
+        description="Názov a počet dní. Cvičenia pridáš v ďalšom kroku."
+      />
 
       <Card className="max-w-md">
         <CardHeader>

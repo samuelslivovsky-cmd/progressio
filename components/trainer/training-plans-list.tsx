@@ -7,8 +7,9 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, ChevronRight, Dumbbell, Calendar, Users, UserPlus, Copy } from "lucide-react";
+import { ChevronRight, Dumbbell, Calendar, Users, UserPlus, Copy } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { SearchInput } from "@/components/shared/search-input";
 import type { TrainingPlan } from "@prisma/client";
 import { AssignTrainingPlanDialog } from "./assign-training-plan-dialog";
 
@@ -48,24 +49,20 @@ export function TrainingPlansList({ trainingPlans }: TrainingPlansListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Hľadaj tréningový plán..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <SearchInput
+        placeholder="Hľadaj tréningový plán..."
+        value={search}
+        onChange={setSearch}
+      />
 
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            {trainingPlans.length === 0
+        <EmptyState
+          title={
+            trainingPlans.length === 0
               ? "Zatiaľ nemáš žiadne tréningové plány. Vytvor prvý kliknutím na tlačidlo vyššie."
-              : "Žiadny tréningový plán nevyhovuje hľadaniu."}
-          </CardContent>
-        </Card>
+              : "Žiadny tréningový plán nevyhovuje hľadaniu."
+          }
+        />
       ) : (
         <div className="grid gap-3">
           {filtered.map((plan) => {

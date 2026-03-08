@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Ruler, Plus } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import {
   LineChart,
   Line,
@@ -126,12 +128,8 @@ export default function ClientMeasurementsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Merania</h1>
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Načítavam…
-          </CardContent>
-        </Card>
+        <PageHeader title="Merania" />
+        <EmptyState title="Načítavam…" />
       </div>
     );
   }
@@ -139,7 +137,7 @@ export default function ClientMeasurementsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Merania</h1>
+        <PageHeader title="Merania" />
         <Button onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Pridať meranie
@@ -156,15 +154,17 @@ export default function ClientMeasurementsPage() {
         </CardHeader>
         <CardContent>
           {chartData.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <Ruler className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">Žiadne merania</p>
-              <p className="text-sm mt-1">Pridaj prvý záznam.</p>
-              <Button className="mt-4" onClick={() => setAddOpen(true)}>
+            <EmptyState
+              wrapInCard={false}
+              icon={<Ruler className="h-12 w-12" />}
+              title="Žiadne merania"
+              description="Pridaj prvý záznam."
+            >
+              <Button onClick={() => setAddOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Pridať meranie
               </Button>
-            </div>
+            </EmptyState>
           ) : (
             <div className="h-[340px] w-full">
               <ResponsiveContainer width="100%" height="100%">

@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Scale, Ruler, Utensils, Dumbbell, TrendingDown, TrendingUp } from "lucide-react";
@@ -245,11 +246,7 @@ export function ClientDetailTabs({
             </Link>
           </div>
           {foodLogs.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                Žiadne záznamy stravy
-              </CardContent>
-            </Card>
+            <EmptyState title="Žiadne záznamy stravy" />
           ) : (
             <div className="space-y-2">
               {foodLogs.map((log: { id: string; date: Date | string; items: { food: { calories: number; servingSize?: number }; amount: number }[] }) => {
@@ -281,11 +278,7 @@ export function ClientDetailTabs({
       {tab === "trening" && (
         <div className="space-y-4">
           {workoutLogs.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                Žiadne záznamy tréningov
-              </CardContent>
-            </Card>
+            <EmptyState title="Žiadne záznamy tréningov" />
           ) : (
             <div className="space-y-2">
               {workoutLogs.map((log: { id: string; date: Date | string; name?: string | null; items: { id: string; exercise: { name: string } }[]; durationMin?: number | null }) => (

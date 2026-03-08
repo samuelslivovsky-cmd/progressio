@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Scale, Ruler, ChevronRight, Flame, UtensilsCrossed, Dumbbell } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import {
   LineChart,
   Line,
@@ -39,22 +41,18 @@ export default function ClientProgressOverviewPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Pokrok</h1>
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Načítavam…
-          </CardContent>
-        </Card>
+        <PageHeader title="Pokrok" />
+        <EmptyState title="Načítavam…" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Pokrok</h1>
-      <p className="text-muted-foreground">
-        Prehľad váhy, meraní a adherence. Pre detaily použij odkazy nižšie.
-      </p>
+      <PageHeader
+        title="Pokrok"
+        description="Prehľad váhy, meraní a adherence. Pre detaily použij odkazy nižšie."
+      />
 
       {/* Streak + adherence 7 days */}
       {(progressOverview?.streak !== undefined || progressOverview?.foodDays) && (

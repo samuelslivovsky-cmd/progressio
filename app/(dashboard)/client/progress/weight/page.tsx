@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Scale, Plus, TrendingDown, TrendingUp, Target } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
 import {
   LineChart,
   Line,
@@ -126,12 +128,8 @@ export default function ClientWeightPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Váha</h1>
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Načítavam…
-          </CardContent>
-        </Card>
+        <PageHeader title="Váha" />
+        <EmptyState title="Načítavam…" />
       </div>
     );
   }
@@ -139,7 +137,7 @@ export default function ClientWeightPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Váha</h1>
+        <PageHeader title="Váha" />
         <div className="flex items-center gap-2">
           <Button
             variant={range === "30" ? "default" : "outline"}
@@ -249,15 +247,17 @@ export default function ClientWeightPage() {
         </CardHeader>
         <CardContent>
           {chartData.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <Scale className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">Žiadne záznamy váhy</p>
-              <p className="text-sm mt-1">Pridaj prvý záznam a uvidíš tu graf.</p>
-              <Button className="mt-4" onClick={() => setAddOpen(true)}>
+            <EmptyState
+              wrapInCard={false}
+              icon={<Scale className="h-12 w-12" />}
+              title="Žiadne záznamy váhy"
+              description="Pridaj prvý záznam a uvidíš tu graf."
+            >
+              <Button onClick={() => setAddOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Pridať váhu
               </Button>
-            </div>
+            </EmptyState>
           ) : (
             <div className="h-[320px] w-full">
               <ResponsiveContainer width="100%" height="100%">

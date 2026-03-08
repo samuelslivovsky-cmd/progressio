@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { ClientsTable } from "@/components/trainer/clients-table";
 import { AddClientDialog } from "@/components/trainer/add-client-dialog";
+import { PageHeader } from "@/components/shared/page-header";
 
 export default async function ClientsPage() {
   const supabase = await createClient();
@@ -25,13 +26,12 @@ export default async function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Klienti</h1>
-          <p className="text-muted-foreground">Spravuj svojich klientov</p>
-        </div>
+      <PageHeader
+        title="Klienti"
+        description="Spravuj svojich klientov"
+      >
         <AddClientDialog />
-      </div>
+      </PageHeader>
 
       <ClientsTable clients={clients} />
     </div>

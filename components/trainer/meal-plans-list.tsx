@@ -7,8 +7,9 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, ChevronRight, ClipboardList, Calendar, Users, Copy } from "lucide-react";
+import { ChevronRight, ClipboardList, Calendar, Users, Copy } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { SearchInput } from "@/components/shared/search-input";
 import type { MealPlan } from "@prisma/client";
 
 type MealPlanWithCounts = MealPlan & {
@@ -57,24 +58,20 @@ export function MealPlansList({ mealPlans }: MealPlansListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Hľadaj jedálniček..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <SearchInput
+        placeholder="Hľadaj jedálniček..."
+        value={searchInput}
+        onChange={setSearchInput}
+      />
 
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            {mealPlans.length === 0
+        <EmptyState
+          title={
+            mealPlans.length === 0
               ? "Zatiaľ nemáš žiadne jedálničky. Vytvor prvý kliknutím na tlačidlo vyššie."
-              : "Žiadny jedálniček nevyhovuje hľadaniu."}
-          </CardContent>
-        </Card>
+              : "Žiadny jedálniček nevyhovuje hľadaniu."
+          }
+        />
       ) : (
         <div className="grid gap-3">
           {filtered.map((plan) => {

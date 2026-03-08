@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Dumbbell, Play, ChevronLeft, Check, PlusCircle, Pencil, Timer, SkipForward } from "lucide-react";
 import { capitalizeWords } from "@/lib/utils";
+import { EmptyState } from "@/components/shared/empty-state";
 
 type RestTimerState = {
   secondsLeft: number;
@@ -185,13 +186,7 @@ export function WorkoutView() {
   };
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Načítavam plán…
-        </CardContent>
-      </Card>
-    );
+    return <EmptyState title="Načítavam plán…" />;
   }
 
   const hasTrainerDays = trainerDays.filter((d) => !d.isRestDay && d.exercises.length > 0).length > 0;
@@ -200,21 +195,18 @@ export function WorkoutView() {
   );
   if (!hasTrainerDays && !hasClientPlans) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="font-medium">Nemáš žiadny tréningový plán</p>
-          <p className="text-sm mt-1">
-            Tréner ti môže priradiť plán, alebo si vytvor vlastný.
-          </p>
-          <Link href="/client/workout/my-plans">
-            <Button className="mt-4 inline-flex items-center gap-2">
-              <PlusCircle className="h-4 w-4 shrink-0" />
-              <span className="whitespace-nowrap">Vytvoriť vlastný plán</span>
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={<Dumbbell className="h-12 w-12" />}
+        title="Nemáš žiadny tréningový plán"
+        description="Tréner ti môže priradiť plán, alebo si vytvor vlastný."
+      >
+        <Link href="/client/workout/my-plans">
+          <Button className="inline-flex items-center gap-2">
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="whitespace-nowrap">Vytvoriť vlastný plán</span>
+          </Button>
+        </Link>
+      </EmptyState>
     );
   }
 

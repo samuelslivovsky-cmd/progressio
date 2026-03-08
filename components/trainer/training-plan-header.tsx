@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -16,7 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
+import { Pencil } from "lucide-react";
 
 interface TrainingPlanHeaderProps {
   id: string;
@@ -67,28 +66,24 @@ export function TrainingPlanHeader({
 
   return (
     <>
-      <div className="flex items-center gap-4">
-        <Link
-          href="/trainer/plans/training"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
-          <p className="text-muted-foreground">
+      <PageHeader
+        title={name}
+        backHref="/trainer/plans/training"
+        description={
+          <>
             {description || "Bez popisu"}
             {assignmentCount > 0 && (
               <> · Priradené {assignmentCount} klientom</>
             )}
-          </p>
-        </div>
+          </>
+        }
+      >
         <Button variant="outline" size="sm" onClick={openDialog}>
           <Pencil className="h-4 w-4" />
           Upraviť
         </Button>
         {extraActions}
-      </div>
+      </PageHeader>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

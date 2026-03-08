@@ -5,8 +5,10 @@ import { format, addDays, subDays } from "date-fns";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Utensils, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import { AddFoodLogItemDialog } from "./add-food-log-item-dialog";
 
@@ -133,13 +135,7 @@ export function FoodLogView() {
   }
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          Načítavam…
-        </CardContent>
-      </Card>
-    );
+    return <EmptyState title="Načítavam…" />;
   }
 
   return (
@@ -157,11 +153,11 @@ export function FoodLogView() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <input
+            <Input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="flex h-9 w-[180px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+              className="h-9 w-[180px]"
             />
             <Button
               variant="outline"

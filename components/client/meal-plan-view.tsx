@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Utensils } from "lucide-react";
 import { format } from "date-fns";
+import { EmptyState } from "@/components/shared/empty-state";
 
 const MEAL_LABELS: Record<string, string> = {
   breakfast: "Raňajky",
@@ -73,13 +74,11 @@ export function MealPlanView({
 
   if (mealPlan.days.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          <Utensils className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="font-medium">Plán je zatiaľ prázdny</p>
-          <p className="text-sm mt-1">Tréner ti sem pridá jedlá.</p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={<Utensils className="h-12 w-12" />}
+        title="Plán je zatiaľ prázdny"
+        description="Tréner ti sem pridá jedlá."
+      />
     );
   }
 
