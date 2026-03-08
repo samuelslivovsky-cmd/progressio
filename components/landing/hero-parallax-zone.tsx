@@ -3,24 +3,76 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { FlipWords } from "@/components/ui/flip-words";
 import { HeroBackground } from "./hero-background";
 
-const TOTAL_VH = 7; // 6vh scrollable distance
+const TOTAL_VH = 5;
+const TRAIL_VH = 0.3; // extra viewport heights appended after storytelling ends, preventing next section from bleeding in
+const MOCKUP_BASE_WIDTH = 520;
 
 function clamp(x: number, a = 0, b = 1) { return Math.min(b, Math.max(a, x)); }
 function seg(p: number, a: number, b: number) { return clamp((p - a) / (b - a)); }
 
-// ── Scroll phases ─────────────────────────────────────────────────────────────
-// 0.00 – 0.10  hero text + floating cards idle
-// 0.10 – 0.20  hero text fades out
-// 0.15 – 0.32  cards merge
-// 0.28 – 0.42  client mockup + copy slide in
-// 0.42 – 0.60  client phase pinned
-// 0.58 – 0.66  client slides out
-// 0.63 – 0.78  trainer mockup + copy slide in
-// 0.78 – 1.00  trainer phase pinned
+// ── Scroll phases (scrollable = 4*vh) — storytelling kratší na PC aj mobile ─
+// 0.00 – 0.05  hero idle
+// 0.05 – 0.12  hero text fades out
+// 0.08 – 0.20  cards merge
+// 0.18 – 0.28  client slides in
+// 0.28 – 0.36  client pinned
+// 0.36 – 0.44  client↔AI simultaneous crossfade
+// 0.44 – 0.52  AI pinned
+// 0.52 – 0.62  AI↔trainer simultaneous crossfade
+// 0.62 – 1.00  trainer pinned
 // ─────────────────────────────────────────────────────────────────────────────
+
+const HERO_CSS = `
+  .hpz-section {
+    height: ${(TOTAL_VH + TRAIL_VH) * 100}vh;
+    height: ${(TOTAL_VH + TRAIL_VH) * 100}svh;
+  }
+  .hpz-sticky {
+    height: 100vh;
+    height: 100dvh;
+    height: 100svh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: 100svh;
+  }
+  @media (max-width: 767px) {
+    .hpz-sticky {
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      box-sizing: border-box;
+    }
+    /* Posun hero textu hore — na mobile je inak vypočítaný viewport pri prvom načítaní */
+    .hpz-hero-text-inner {
+      transform: translateY(-15vh);
+    }
+  }
+  @keyframes hpz-badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.3); }
+    50%       { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+  }
+  @keyframes hpz-scroll-bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%       { transform: translateX(-50%) translateY(7px); }
+  }
+  @keyframes hpz-scroll-dot {
+    0%   { transform: translateY(0); opacity: 1; }
+    80%  { transform: translateY(5px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 0; }
+  }
+  @keyframes hpz-live-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.7); }
+  }
+  @keyframes hpz-typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30%            { transform: translateY(-4px); opacity: 1; }
+  }
+`;
 
 const shell: React.CSSProperties = {
   background: "rgba(6, 18, 10, 0.92)",
@@ -31,7 +83,13 @@ const shell: React.CSSProperties = {
   padding: "22px",
   boxShadow: "0 32px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(34,197,94,0.07), inset 0 1px 0 rgba(255,255,255,0.04)",
   width: "100%",
-  maxWidth: "520px",
+  maxWidth: `${MOCKUP_BASE_WIDTH}px`,
+};
+
+const shellPurple: React.CSSProperties = {
+  ...shell,
+  border: "1px solid rgba(167,139,250,0.25)",
+  boxShadow: "0 32px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(167,139,250,0.08), inset 0 1px 0 rgba(255,255,255,0.04)",
 };
 
 const tile: React.CSSProperties = {
@@ -41,9 +99,14 @@ const tile: React.CSSProperties = {
   padding: "13px",
 };
 
-function Lbl({ children }: { children: React.ReactNode }) {
+const tilePurple: React.CSSProperties = {
+  ...tile,
+  border: "1px solid rgba(167,139,250,0.1)",
+};
+
+function Lbl({ children, purple }: { children: React.ReactNode; purple?: boolean }) {
   return (
-    <div style={{ fontSize: "10px", fontWeight: 600, color: "rgba(255,255,255,0.38)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "6px" }}>
+    <div style={{ fontSize: "10px", fontWeight: 600, color: purple ? "rgba(167,139,250,0.5)" : "rgba(255,255,255,0.38)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "6px" }}>
       {children}
     </div>
   );
@@ -54,22 +117,19 @@ function ClientMockup() {
   const line = `M${pts.map(([x,y]) => `${x},${y}`).join(" L")}`;
   const area = `${line} L99,48 L0,48 Z`;
   const r = 22, circ = 2 * Math.PI * r;
-
   return (
     <div style={shell}>
-      <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "18px" }}>
-        Dashboard — Klient
-      </div>
+      <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "18px" }}>Dashboard — Klient</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "12px" }}>
         {[
           { label: "Váha",    value: "73.4 kg",    accent: false },
           { label: "Kalórie", value: "1 840 kcal", accent: false },
           { label: "Séria",   value: "14 dní",     accent: true  },
-          { label: "Tréning", value: "Hotový",     accent: true  },
+          { label: "Tréning", value: "Hotový ✓",   accent: true  },
         ].map(({ label, value, accent }) => (
           <div key={label} style={tile}>
             <Lbl>{label}</Lbl>
-            <div style={{ fontSize: "14px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div>
           </div>
         ))}
       </div>
@@ -124,6 +184,50 @@ function ClientMockup() {
   );
 }
 
+function AiMockup() {
+  return (
+    <div style={shellPurple}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Dashboard — Klient AI</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.22)", borderRadius: "20px", padding: "3px 10px" }}>
+          <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 6px rgba(167,139,250,0.9)", animation: "hpz-live-dot 2s ease-in-out infinite" }} />
+          <span style={{ fontSize: "10px", color: "#c4b5fd", fontWeight: 600 }}>AI aktívny</span>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px", marginBottom: "12px" }}>
+        {[{ label: "TDEE", value: "2 420 kcal" }, { label: "Plató", value: "nie" }, { label: "Séria", value: "14 dní" }].map(({ label, value }) => (
+          <div key={label} style={tilePurple}><Lbl purple>{label}</Lbl><div style={{ fontSize: "13px", fontWeight: 700, color: "#fff" }}>{value}</div></div>
+        ))}
+      </div>
+      <div style={tilePurple}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
+          <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 6px rgba(167,139,250,0.8)" }} />
+          <span style={{ fontSize: "10px", fontWeight: 600, color: "rgba(167,139,250,0.7)", textTransform: "uppercase", letterSpacing: "0.1em" }}>AI Koučing</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "9px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ maxWidth: "85%", padding: "8px 11px", borderRadius: "12px 12px 2px 12px", background: "rgba(167,139,250,0.13)", border: "1px solid rgba(167,139,250,0.22)", fontSize: "10.5px", color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
+              Bolí ma chrbát, mám dnes cvičiť?
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div style={{ maxWidth: "90%", padding: "8px 11px", borderRadius: "12px 12px 12px 2px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", fontSize: "10.5px", color: "rgba(255,255,255,0.75)", lineHeight: 1.55 }}>
+              Na základe tvojich dát — 7 000+ krokov denne a 14-dňová séria. Cvič, ale nahraď deadlift plankom a RDL.
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div style={{ padding: "8px 14px", borderRadius: "12px 12px 12px 2px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: "5px", alignItems: "center" }}>
+              {[0, 1, 2].map(j => (
+                <div key={j} style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#a78bfa", animation: "hpz-typing 1.4s ease-in-out infinite", animationDelay: `${j * 0.18}s` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TrainerMockup() {
   const clients = [
     { name: "Mirka V.",  active: true,  ago: "dnes",  risk: null },
@@ -131,12 +235,14 @@ function TrainerMockup() {
     { name: "Jana K.",   active: false, ago: "2 dni", risk: "plató" },
     { name: "Tomáš M.",  active: false, ago: "4 dni", risk: "riziko" },
   ];
-
+  const activity = [
+    { msg: "Mirka zalogovala váhu",   color: "#22c55e", warn: false },
+    { msg: "Adam dokončil tréning",   color: "#22c55e", warn: false },
+    { msg: "Jana K. — plató 3 týždne", color: "#f59e0b", warn: true  },
+  ];
   return (
     <div style={shell}>
-      <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "18px" }}>
-        Dashboard — Tréner
-      </div>
+      <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "18px" }}>Dashboard — Tréner</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "12px" }}>
         {[
           { label: "Klienti",    value: "12", accent: false },
@@ -144,10 +250,7 @@ function TrainerMockup() {
           { label: "Jedálničky", value: "5",  accent: false },
           { label: "Aktívni",    value: "7",  accent: true  },
         ].map(({ label, value, accent }) => (
-          <div key={label} style={tile}>
-            <Lbl>{label}</Lbl>
-            <div style={{ fontSize: "22px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div>
-          </div>
+          <div key={label} style={tile}><Lbl>{label}</Lbl><div style={{ fontSize: "22px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div></div>
         ))}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
@@ -185,11 +288,11 @@ function TrainerMockup() {
             Týždeň <span style={{ color: "#4ade80", fontWeight: 600 }}>2</span> / 4
           </div>
           <div style={{ paddingTop: "8px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <Lbl>Aktivita</Lbl>
-            {["Mirka zalogovala váhu", "Adam dokončil tréning"].map((msg, i) => (
-              <div key={i} style={{ fontSize: "10px", color: "rgba(255,255,255,0.4)", display: "flex", gap: "5px", alignItems: "center", marginBottom: "4px" }}>
-                <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
-                {msg}
+            <Lbl>Živá aktivita</Lbl>
+            {activity.map((a, i) => (
+              <div key={i} style={{ fontSize: "10px", color: a.warn ? "rgba(245,158,11,0.85)" : "rgba(255,255,255,0.4)", display: "flex", gap: "5px", alignItems: "center", marginBottom: "4px" }}>
+                <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: a.color, flexShrink: 0 }} />
+                {a.msg}
               </div>
             ))}
           </div>
@@ -199,176 +302,160 @@ function TrainerMockup() {
   );
 }
 
-// ── Side copy block shown next to each mockup ─────────────────────────────────
+// phaseIn: 0→1 progress of THIS phase sliding in (used for bullets + badge entrance)
 function SideCopy({
-  eyebrow,
-  headline,
-  sub,
-  bullets,
-  badge,
-  progress,
-  side,
+  eyebrow, headline, sub, bullets, badge,
+  accent = "green", phaseIn, side, isMobile, mobileOrder,
 }: {
-  eyebrow: string;
-  headline: string;
-  sub: string;
-  bullets: string[];
-  badge?: string;
-  progress: number; // 0→1 entrance progress
-  side: "left" | "right";
+  eyebrow: string; headline: string; sub: string; bullets: string[];
+  badge?: string; accent?: "green" | "purple";
+  phaseIn: number; side: "left" | "right"; isMobile: boolean; mobileOrder?: number;
 }) {
   const dx = side === "left" ? -50 : 50;
+  const isGreen = accent === "green";
+  const accentColor  = isGreen ? "#22c55e" : "#a78bfa";
+  const accentLight  = isGreen ? "#4ade80" : "#c4b5fd";
+  const accentBg     = isGreen ? "rgba(34,197,94,0.08)"  : "rgba(167,139,250,0.08)";
+  const accentBorder = isGreen ? "rgba(34,197,94,0.2)"   : "rgba(167,139,250,0.2)";
+
   return (
-    <div
-      style={{
-        opacity: progress,
-        transform: `translateX(${(1 - progress) * dx}px)`,
-        transition: "none",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        gap: "0",
-        padding: side === "left" ? "0 48px 0 0" : "0 0 0 48px",
-      }}
-    >
-      {badge && (
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "7px",
-            background: "rgba(34,197,94,0.08)",
-            border: "1px solid rgba(34,197,94,0.2)",
-            borderRadius: "20px",
-            padding: "5px 12px",
-            marginBottom: "20px",
-            width: "fit-content",
-          }}
-        >
-          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px rgba(34,197,94,0.8)" }} />
-          <span style={{ fontSize: "11px", fontWeight: 600, color: "#4ade80", letterSpacing: "0.06em" }}>{badge}</span>
+    <div style={{
+      opacity: phaseIn,
+      transform: isMobile ? `translateY(${(1 - phaseIn) * -24}px)` : `translateX(${(1 - phaseIn) * dx}px)`,
+      transition: "none",
+      display: "flex", flexDirection: "column", justifyContent: "center",
+      padding: isMobile ? "0" : (side === "left" ? "0 48px 0 0" : "0 0 0 48px"),
+      order: isMobile && mobileOrder !== undefined ? mobileOrder : undefined,
+      textAlign: isMobile ? "center" : "left",
+      alignItems: isMobile ? "center" : "flex-start",
+    }}>
+      {badge && !isMobile && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "7px", background: accentBg, border: `1px solid ${accentBorder}`, borderRadius: "20px", padding: "5px 12px", marginBottom: "20px", width: "fit-content" }}>
+          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: accentColor, boxShadow: `0 0 8px ${accentColor}` }} />
+          <span style={{ fontSize: "11px", fontWeight: 600, color: accentLight, letterSpacing: "0.06em" }}>{badge}</span>
         </div>
       )}
-
-      <div style={{ fontSize: "12px", fontWeight: 600, color: "#22c55e", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "14px" }}>
+      <div style={{ fontSize: isMobile ? "10px" : "12px", fontWeight: 600, color: accentColor, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: isMobile ? "8px" : "14px" }}>
         {eyebrow}
       </div>
-
-      <h2
-        style={{
-          fontSize: "clamp(28px, 3.5vw, 46px)",
-          fontWeight: 800,
-          color: "#fff",
-          lineHeight: 1.1,
-          letterSpacing: "-0.03em",
-          marginBottom: "18px",
-          whiteSpace: "pre-line",
-        }}
-      >
+      <h2 style={{ fontSize: isMobile ? "clamp(22px, 6vw, 30px)" : "clamp(28px, 3.5vw, 46px)", fontWeight: 800, color: "#fff", lineHeight: 1.1, letterSpacing: "-0.03em", marginBottom: isMobile ? "10px" : "18px", whiteSpace: "pre-line" }}>
         {headline}
       </h2>
-
-      <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.58)", lineHeight: 1.65, marginBottom: "28px" }}>
+      <p style={{ fontSize: isMobile ? "13px" : "16px", color: "rgba(255,255,255,0.55)", lineHeight: 1.65, marginBottom: isMobile ? "0" : "28px" }}>
         {sub}
       </p>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: "11px" }}>
-        {bullets.map((b, i) => (
-          <div
-            key={b}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              opacity: progress > 0.4 + i * 0.15 ? 1 : 0,
-              transform: progress > 0.4 + i * 0.15 ? "translateX(0)" : `translateX(${side === "left" ? -16 : 16}px)`,
+      {!isMobile && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "11px" }}>
+          {bullets.map((b, i) => (
+            <div key={b} style={{
+              display: "flex", alignItems: "center", gap: "12px",
+              opacity: phaseIn > 0.4 + i * 0.15 ? 1 : 0,
+              transform: phaseIn > 0.4 + i * 0.15 ? "translateX(0)" : `translateX(${side === "left" ? -16 : 16}px)`,
               transition: "none",
-            }}
-          >
-            <div
-              style={{
-                width: "20px",
-                height: "20px",
-                borderRadius: "6px",
-                background: "rgba(34,197,94,0.1)",
-                border: "1px solid rgba(34,197,94,0.22)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M2 5l2 2 4-4" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+            }}>
+              <div style={{ width: "20px", height: "20px", borderRadius: "6px", background: isGreen ? "rgba(34,197,94,0.1)" : "rgba(167,139,250,0.1)", border: `1px solid ${accentBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5l2 2 4-4" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.78)", fontWeight: 500 }}>{b}</span>
             </div>
-            <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{b}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Floating badge that appears near the mockup ───────────────────────────────
-function FloatingBadge({ text, sub, progress, position }: {
-  text: string;
-  sub?: string;
-  progress: number;
-  position: React.CSSProperties;
+// phaseIn: 0→1, badge appears after phaseIn > 0.5
+function FloatingBadge({ text, sub, phaseIn, position, accent = "green", isMobile }: {
+  text: string; sub?: string; phaseIn: number;
+  position: React.CSSProperties; accent?: "green" | "purple"; isMobile: boolean;
 }) {
+  if (isMobile) return null;
+  const show = clamp((phaseIn - 0.5) / 0.4);
+  const isGreen = accent === "green";
   return (
-    <div
-      style={{
-        position: "absolute",
-        ...position,
-        background: "rgba(6,18,10,0.95)",
-        border: "1px solid rgba(34,197,94,0.25)",
-        borderRadius: "12px",
-        padding: "8px 12px",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.06)",
-        opacity: progress > 0.6 ? (progress - 0.6) / 0.3 : 0,
-        transform: `scale(${0.85 + (progress > 0.6 ? Math.min((progress - 0.6) / 0.3, 1) * 0.15 : 0)})`,
-        transformOrigin: "center",
-        pointerEvents: "none",
-        whiteSpace: "nowrap",
-        zIndex: 5,
-      }}
-    >
-      <div style={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>{text}</div>
-      {sub && <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.45)", marginTop: "2px" }}>{sub}</div>}
+    <div style={{
+      position: "absolute", ...position,
+      background: "rgba(6,18,10,0.96)",
+      border: isGreen ? "1px solid rgba(34,197,94,0.28)" : "1px solid rgba(167,139,250,0.28)",
+      borderRadius: "12px", padding: "9px 14px",
+      boxShadow: isGreen ? "0 8px 32px rgba(0,0,0,0.55), 0 0 16px rgba(34,197,94,0.08)" : "0 8px 32px rgba(0,0,0,0.55), 0 0 16px rgba(167,139,250,0.08)",
+      opacity: show, transform: `scale(${0.88 + show * 0.12})`,
+      transformOrigin: "center", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 5,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: isGreen ? "#22c55e" : "#a78bfa", boxShadow: isGreen ? "0 0 6px rgba(34,197,94,0.9)" : "0 0 6px rgba(167,139,250,0.9)" }} />
+        <div style={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>{text}</div>
+      </div>
+      {sub && <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.42)", marginTop: "3px", paddingLeft: "11px" }}>{sub}</div>}
     </div>
   );
 }
 
-// ── Scroll progress bar at bottom ────────────────────────────────────────────
-function ScrollBar({ progress }: { progress: number }) {
-  // Only show during mockup phases
-  const show = progress > 0.28 && progress < 0.99;
-  const pct = clamp((progress - 0.28) / 0.71) * 100;
+function PhaseDots({ progress, isMobile }: { progress: number; isMobile: boolean }) {
+  const phases = [
+    { label: "Úvod",    range: [0,    0.18] as [number, number] },
+    { label: "Klient",  range: [0.18, 0.44] as [number, number] },
+    { label: "AI Kouč", range: [0.44, 0.62] as [number, number] },
+    { label: "Tréner",  range: [0.62, 1.01] as [number, number] },
+  ];
+  const activeIdx = phases.findIndex(({ range }) => progress >= range[0] && progress < range[1]);
+  const effectiveIdx = activeIdx === -1 ? phases.length - 1 : activeIdx;
+  const visible = !isMobile && progress > 0.05 && progress < 0.995;
+
   return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: "28px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "8px",
-        opacity: show ? 1 : 0,
-        zIndex: 30,
-        pointerEvents: "none",
-        transition: "opacity 0.4s ease",
-      }}
-    >
-      <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.28)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>
-        Pokračuj scrollovaním
-      </div>
-      <div style={{ width: "120px", height: "2px", background: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
+    <div style={{ position: "absolute", right: "28px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: "12px", opacity: visible ? 1 : 0, transition: "opacity 0.5s ease", zIndex: 30, pointerEvents: "none" }}>
+      {phases.map((p, i) => {
+        const isActive = i === effectiveIdx;
+        const isAi = i === 2;
+        const dotColor = isActive ? (isAi ? "#a78bfa" : "#22c55e") : "rgba(255,255,255,0.15)";
+        return (
+          <div key={p.label} style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end" }}>
+            <span style={{ fontSize: "9px", color: isActive ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.15)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", transition: "color 0.35s ease" }}>{p.label}</span>
+            <div style={{ width: isActive ? "8px" : "5px", height: isActive ? "8px" : "5px", borderRadius: "50%", background: dotColor, boxShadow: isActive ? `0 0 8px ${isAi ? "rgba(167,139,250,0.7)" : "rgba(34,197,94,0.7)"}` : "none", transition: "all 0.35s ease" }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ScrollHint({ visible }: { visible: boolean }) {
+  return (
+    <div style={{ position: "absolute", bottom: "36px", left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", opacity: visible ? 1 : 0, transition: "opacity 0.6s ease", zIndex: 30, pointerEvents: "none", animation: visible ? "hpz-scroll-bounce 2s ease-in-out infinite" : "none" }}>
+      <svg width="22" height="34" viewBox="0 0 22 34" fill="none">
+        <rect x="1" y="1" width="20" height="32" rx="10" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
+        <circle cx="11" cy="10" r="3" fill="#22c55e" style={{ animation: "hpz-scroll-dot 2s ease-in-out infinite" }} />
+        <path d="M7 22l4 5 4-5" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.22)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Scroll</span>
+    </div>
+  );
+}
+
+function ScrollBar({ progress }: { progress: number }) {
+  const visible = progress > 0.18 && progress < 0.99;
+  const pct = clamp((progress - 0.18) / 0.82) * 100;
+  return (
+    <div style={{ position: "absolute", bottom: "24px", left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", opacity: visible ? 1 : 0, zIndex: 30, pointerEvents: "none", transition: "opacity 0.4s ease" }}>
+      <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.22)", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>Pokračuj scrollovaním</div>
+      <div style={{ width: "100px", height: "2px", background: "rgba(255,255,255,0.08)", borderRadius: "2px", overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, background: "#22c55e", borderRadius: "2px", boxShadow: "0 0 6px rgba(34,197,94,0.6)", transition: "none" }} />
       </div>
+    </div>
+  );
+}
+
+function MockupWrap({ children, isMobile, windowWidth }: { children: React.ReactNode; isMobile: boolean; windowWidth: number }) {
+  if (!isMobile) {
+    return <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>{children}</div>;
+  }
+  const scale = Math.min(1, (windowWidth - 40) / MOCKUP_BASE_WIDTH);
+  return (
+    <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+      <div style={{ zoom: scale, width: "100%" }}>{children}</div>
     </div>
   );
 }
@@ -377,201 +464,200 @@ type Props = { role?: "TRAINER" | "CLIENT" | null; dashboardHref: string };
 
 export function HeroParallaxZone({ role, dashboardHref }: Props) {
   const [progress, setProgress] = useState(0);
+  const [windowWidth, setWindowWidth] = useState(1200);
+  // Locked at mount — prevents mobile browser chrome show/hide from affecting scroll progress or heights
+  const [viewportH, setViewportH] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
 
+  const isMobile = windowWidth < 768;
+
   useEffect(() => {
-    const update = () => {
-      const el = sectionRef.current;
-      if (!el) return;
-      const vh = window.innerHeight;
-      const scrollable = (TOTAL_VH - 1) * vh;
+    const el = sectionRef.current;
+    if (!el) return;
+
+    // Capture ONCE at mount. On mobile, window.innerHeight changes as the browser chrome
+    // shows/hides; locking it here keeps scroll progress and layout stable.
+    const vh = window.innerHeight;
+    setViewportH(vh);
+
+    const scrollable = (TOTAL_VH - 1) * vh; // locked, not recomputed on resize
+
+    const updateScroll = () => {
       const sectionTop = window.scrollY + el.getBoundingClientRect().top;
       setProgress(clamp((window.scrollY - sectionTop) / scrollable));
     };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
+    const updateWidth = () => setWindowWidth(window.innerWidth);
+    const onResize = () => { updateScroll(); updateWidth(); };
+
+    updateScroll();
+    updateWidth();
+    window.addEventListener("scroll", updateScroll, { passive: true });
+    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", updateScroll);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
   // ── Animation values ──────────────────────────────────────────────────────
-  const textOpacity   = 1 - seg(progress, 0.10, 0.20);
-  const mergeProgress = seg(progress, 0.15, 0.32);
+  const textOpacity   = 1 - seg(progress, 0.05, 0.12);
+  const mergeProgress = seg(progress, 0.08, 0.20);
 
-  // Client phase
-  const clientIn      = seg(progress, 0.28, 0.42);
-  const clientOut     = seg(progress, 0.58, 0.66);
+  // Client: in 0.18–0.28, pinned 0.28–0.36, out 0.36–0.44
+  const clientIn      = seg(progress, 0.18, 0.28);
+  const clientOut     = seg(progress, 0.36, 0.44);  // simultaneous with aiIn
   const clientOpacity = Math.min(clientIn, 1 - clientOut);
   const clientY       = (1 - clientIn) * -120 + clientOut * 80;
 
-  // Trainer phase
-  const trainerIn      = seg(progress, 0.63, 0.78);
+  // AI: in 0.36–0.44 (crossfade with client), pinned 0.44–0.52, out 0.52–0.62 (crossfade with trainer)
+  const aiIn      = seg(progress, 0.36, 0.44);  // same window as clientOut → clean crossfade
+  const aiOut     = seg(progress, 0.52, 0.62);  // same window as trainerIn → clean crossfade
+  const aiOpacity = Math.min(aiIn, 1 - aiOut);
+  const aiY       = (1 - aiIn) * -120 + aiOut * 80;
+
+  // Trainer: in 0.52–0.62 (crossfade with AI), pinned 0.62–1.00
+  const trainerIn      = seg(progress, 0.52, 0.62);  // same window as aiOut
   const trainerOpacity = trainerIn;
   const trainerY       = (1 - trainerIn) * -120;
 
   const showClient  = clientOpacity  > 0.01;
+  const showAi      = aiOpacity      > 0.01;
   const showTrainer = trainerOpacity > 0.01;
+
+  const splitGrid = (): React.CSSProperties => ({
+    display: isMobile ? "flex" : "grid",
+    flexDirection: isMobile ? "column" : undefined,
+    gridTemplateColumns: isMobile ? undefined : "1fr 1fr",
+    gap: isMobile ? "20px" : "0",
+    maxWidth: isMobile ? "100%" : "1100px",
+    width: "100%",
+    padding: isMobile ? "0 20px" : "0 32px",
+    alignItems: "center",
+  });
 
   return (
     <section
       ref={sectionRef}
-      style={{ height: `${TOTAL_VH * 100}vh`, position: "relative" }}
+      className="hpz-section"
+      style={{
+        // Use locked px value once measured; CSS class handles pre-JS fallback (100svh → 100vh)
+        ...(viewportH > 0 ? { height: `${(TOTAL_VH + TRAIL_VH) * viewportH}px` } : {}),
+        position: "relative",
+      }}
       aria-label="Hero"
     >
-      <div style={{ position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}>
+      <style>{HERO_CSS}</style>
 
+      <div
+        className="hpz-sticky"
+        style={{
+          position: "sticky", top: 0, overflow: "hidden",
+          // Locked px once measured; CSS class handles pre-JS fallback (100svh → 100vh)
+          ...(viewportH > 0 ? { height: `${viewportH}px` } : {}),
+        }}
+      >
         <HeroBackground mergeProgress={mergeProgress} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 45%, rgba(0,0,0,0.5))", pointerEvents: "none" }} />
 
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.45))", pointerEvents: "none" }} />
-
-        {/* ── Phase 1: Hero text ───────────────────────────────────────────── */}
-        <div style={{
-          position: "absolute", inset: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 10, opacity: textOpacity,
-          pointerEvents: textOpacity < 0.05 ? "none" : "auto",
-        }}>
-          <div style={{ textAlign: "center", maxWidth: "768px", padding: "0 24px" }}>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground">
-              Platforma, ktorá{" "}
-              <span className="text-primary">myslí</span>{" "}
-              za trénerov
+        {/* ── Phase 1: Hero text ─────────────────────────────────────────── */}
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, opacity: textOpacity, pointerEvents: textOpacity < 0.05 ? "none" : "auto", padding: isMobile ? "0 24px" : "0" }}>
+          <div className="hpz-hero-text-inner" style={{ textAlign: "center", maxWidth: isMobile ? "100%" : "820px", padding: isMobile ? "0" : "0 24px" }}>
+            {!isMobile && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.18)", borderRadius: "24px", padding: "6px 16px", marginBottom: "32px", animation: "hpz-badge-pulse 3s ease-in-out infinite" }}>
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 10px rgba(34,197,94,1)" }} />
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#4ade80", letterSpacing: "0.05em" }}>Pre trénerov, klientov aj samostatných</span>
+              </div>
+            )}
+            <h1 style={{ fontSize: isMobile ? "clamp(32px, 9vw, 48px)" : "clamp(38px, 5.5vw, 72px)", fontWeight: 900, color: "#fff", lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: isMobile ? "8px" : "12px" }}>
+              Platforma pre{" "}
+              <FlipWords
+                words={["trénerov", "klientov", "všetkých"]}
+                duration={3200}
+                className="bg-linear-to-r from-green-400 via-green-300 to-emerald-200 bg-clip-text text-transparent px-0"
+              />
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground" style={{ margin: "24px 0 32px" }}>
-              Klienti logujú, tréneri vytvárajú plány — a systém sám detekuje
-              vzory, predikuje výsledky a upozorní, keď treba zasiahnuť.
+            <h1 style={{ fontSize: isMobile ? "clamp(32px, 9vw, 48px)" : "clamp(38px, 5.5vw, 72px)", fontWeight: 900, color: "#fff", lineHeight: 1.05, letterSpacing: "-0.04em", marginBottom: isMobile ? "16px" : "24px" }}>
+              Na jednom mieste.
+            </h1>
+            <p style={{ fontSize: isMobile ? "15px" : "clamp(16px, 1.8vw, 20px)", color: "rgba(255,255,255,0.52)", lineHeight: 1.7, marginBottom: isMobile ? "28px" : "40px", maxWidth: isMobile ? "100%" : "600px", marginInline: "auto" }}>
+              {isMobile ? "Tréneri: prehľad a plány na jednom mieste. Klienti: logovanie a pokrok — s trénerom alebo s AI koučom. Jedna platforma pre všetkých." : "Tréneri majú prehľad nad klientmi a plány na jednom mieste. Klienti logujú a sledujú pokrok — s trénerom alebo s AI koučom. Jedna platforma pre všetkých."}
             </p>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
+            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>
               {role ? (
-                <Button size="lg" asChild>
-                  <Link href={dashboardHref} className="inline-flex items-center gap-2">
-                    Prejsť do dashboardu <ChevronRight className="size-4 shrink-0" />
-                  </Link>
-                </Button>
+                <Link href={dashboardHref} className={cn(buttonVariants({ size: "lg" }), "inline-flex items-center gap-2")}>Prejsť do dashboardu <ChevronRight className="size-4 shrink-0" /></Link>
               ) : (
                 <>
-                  <Button size="lg" asChild>
-                    <Link href="/register" className="inline-flex items-center gap-2">
-                      Začať zadarmo <ChevronRight className="size-4 shrink-0" />
-                    </Link>
-                  </Button>
-                  <Button size="lg" variant="outline" asChild>
-                    <Link href="/login">Prihlásiť sa</Link>
-                  </Button>
+                  <Link href="/register" className={cn(buttonVariants({ size: "lg" }), "inline-flex items-center gap-2")}>Začať zadarmo <ChevronRight className="size-4 shrink-0" /></Link>
+                  <Link href="/login" className={cn(buttonVariants({ size: "lg", variant: "outline" }), "inline-flex")}>Prihlásiť sa</Link>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* ── Phase 2: Client dashboard ────────────────────────────────────── */}
+        {/* ── Phase 2: Client ────────────────────────────────────────────── */}
         {showClient && (
-          <div
-            style={{
-              position: "absolute", inset: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              zIndex: 20, pointerEvents: "none",
-              opacity: clientOpacity,
-              transform: `translateY(${clientY}px)`,
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "0",
-                maxWidth: "1100px",
-                width: "100%",
-                padding: "0 32px",
-                alignItems: "center",
-              }}
-            >
-              {/* Copy — left */}
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none", opacity: clientOpacity, transform: `translateY(${clientY}px)` }}>
+            <div style={splitGrid()}>
               <SideCopy
                 eyebrow="Pre klientov"
-                headline={"Tvoj pokrok.\nV číslach."}
-                sub="Každý deň vidíš kde stojíš — váha, kalórie, tréning, séria. Tréner vidí to isté v reálnom čase."
-                bullets={[
-                  "14-dňová séria bez prerušenia",
-                  "−2.1 kg za posledný mesiac",
-                  "Tréner vidí tvoj pokrok živé",
-                ]}
-                badge="Live synchronizácia"
-                progress={clientIn}
-                side="left"
+                headline={"Tvoj pokrok.\nKaždý deň viditeľný."}
+                sub={isMobile ? "Loguj váhu, jedlo a tréning. Tréner vidí všetko naživo." : "Loguj váhu, jedlo a tréning. Sleduj svoju sériu, trendy a ciele. Tréner vidí všetko v reálnom čase — bez správ, bez tabuliek."}
+                bullets={["14-dňová séria bez prerušenia", "−2.1 kg za posledný mesiac", "Tréner vidí tvoj pokrok naživo"]}
+                badge="Live synchronizácia" accent="green"
+                phaseIn={clientIn} side="left" isMobile={isMobile}
               />
-
-              {/* Mockup — right, slides from above */}
-              <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+              <MockupWrap isMobile={isMobile} windowWidth={windowWidth}>
                 <ClientMockup />
-                <FloatingBadge
-                  text="Tréner vidí toto práve teraz"
-                  sub="Posledná aktualizácia: pred 2 min"
-                  progress={clientIn}
-                  position={{ top: "-16px", right: "0px" }}
-                />
-              </div>
+                <FloatingBadge text="Tréner vidí toto práve teraz" sub="Posledná aktualizácia: pred 2 min" phaseIn={clientIn} position={{ top: "-18px", right: "0px" }} accent="green" isMobile={isMobile} />
+              </MockupWrap>
             </div>
           </div>
         )}
 
-        {/* ── Phase 3: Trainer dashboard ───────────────────────────────────── */}
-        {showTrainer && (
-          <div
-            style={{
-              position: "absolute", inset: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              zIndex: 20, pointerEvents: "none",
-              opacity: trainerOpacity,
-              transform: `translateY(${trainerY}px)`,
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "0",
-                maxWidth: "1100px",
-                width: "100%",
-                padding: "0 32px",
-                alignItems: "center",
-              }}
-            >
-              {/* Mockup — left, slides from above */}
-              <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
-                <TrainerMockup />
-                <FloatingBadge
-                  text="3 upozornenia vyžadujú akciu"
-                  sub="Tomáš M. · 4 dni bez aktivity"
-                  progress={trainerIn}
-                  position={{ top: "-16px", left: "0px" }}
-                />
-              </div>
+        {/* ── Phase 3: AI ────────────────────────────────────────────────── */}
+        {showAi && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none", opacity: aiOpacity, transform: `translateY(${aiY}px)` }}>
+            <div style={splitGrid()}>
+              <SideCopy
+                eyebrow="Klient AI — 4,99 €/mes"
+                headline={"Bez trénera?\nMáš AI kouča."}
+                sub={isMobile ? "AI analyzuje tvoje dáta a funguje ako osobný kouč — 24/7." : "AI analyzuje tvoje dáta každý deň a funguje ako tvoj osobný kouč — dostupný 24/7. Stojí menej ako jedna káva týždenne."}
+                bullets={["Vypočíta TDEE a makrá podľa teba", "Deteguje plató a navrhne zmenu", "Odpovedá s kontextom tvojich dát"]}
+                badge="Powered by Claude AI" accent="purple"
+                phaseIn={aiIn} side="left" isMobile={isMobile}
+              />
+              <MockupWrap isMobile={isMobile} windowWidth={windowWidth}>
+                <AiMockup />
+                <FloatingBadge text="AI kouč je vždy online" sub="Odpovedá do 3 sekúnd" phaseIn={aiIn} position={{ top: "-18px", right: "0px" }} accent="purple" isMobile={isMobile} />
+              </MockupWrap>
+            </div>
+          </div>
+        )}
 
-              {/* Copy — right */}
+        {/* ── Phase 4: Trainer ───────────────────────────────────────────── */}
+        {showTrainer && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none", opacity: trainerOpacity, transform: `translateY(${trainerY}px)` }}>
+            <div style={splitGrid()}>
+              <MockupWrap isMobile={isMobile} windowWidth={windowWidth}>
+                <TrainerMockup />
+                <FloatingBadge text="3 upozornenia vyžadujú akciu" sub="Tomáš M. · 4 dni bez aktivity" phaseIn={trainerIn} position={{ top: "-18px", left: "0px" }} accent="green" isMobile={isMobile} />
+              </MockupWrap>
               <SideCopy
                 eyebrow="Pre trénerov"
                 headline={"12 klientov.\nJeden pohľad."}
-                sub="Koniec tabuliek a WhatsApp správ. Všetci klienti, plány aj upozornenia na jednej obrazovke."
-                bullets={[
-                  "7 aktívnych klientov dnes",
-                  "Tomáš: 4 dni bez aktivity — alert",
-                  "Systém navrhne akciu za teba",
-                ]}
-                badge="Prediktívna inteligencia"
-                progress={trainerIn}
-                side="right"
+                sub={isMobile ? "Systém sám zistí, kto potrebuje pozornosť. Ty len potvrdíš akciu." : "Koniec tabuliek a WhatsApp správ. Systém sám zistí, kto potrebuje pozornosť — ty len potvrdíš akciu."}
+                bullets={["Kto je aktívny a kto nie — ihneď", "Jana: plató 3 týždne — alert", "Systém navrhne konkrétnu akciu"]}
+                badge="Prediktívna inteligencia" accent="green"
+                phaseIn={trainerIn} side="right" isMobile={isMobile} mobileOrder={-1}
               />
             </div>
           </div>
         )}
 
-        {/* Scroll progress bar */}
+        <PhaseDots progress={progress} isMobile={isMobile} />
+        <ScrollHint visible={progress < 0.05} />
         <ScrollBar progress={progress} />
-
       </div>
     </section>
   );

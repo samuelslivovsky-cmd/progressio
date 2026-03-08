@@ -45,18 +45,30 @@ const reviews = [
   },
 ];
 
+const REVIEWS_CSS = `
+  @media (max-width: 767px) {
+    .landing-reviews-wrap { padding: 56px 0 !important; }
+    .landing-reviews-head { margin-bottom: 40px !important; }
+    .landing-reviews-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+    .landing-reviews-card { padding: 20px 20px !important; }
+    .landing-reviews-card p { font-size: 15px !important; }
+  }
+`;
+
 export function LandingReviews() {
   const { ref, visible } = useVisible(0.1);
 
   return (
     <div
+      className="landing-reviews-wrap"
       style={{
         background: "transparent",
         padding: "100px 0",
       }}
     >
+      <style>{REVIEWS_CSS}</style>
       <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px" }}>
-        <div style={{ textAlign: "center", marginBottom: "64px" }}>
+        <div className="landing-reviews-head" style={{ textAlign: "center", marginBottom: "64px" }}>
           <div
             style={{
               fontSize: "11px",
@@ -85,6 +97,7 @@ export function LandingReviews() {
 
         <div
           ref={ref}
+          className="landing-reviews-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
@@ -94,6 +107,7 @@ export function LandingReviews() {
           {reviews.map((r, i) => (
             <div
               key={r.author}
+              className="landing-reviews-card"
               style={{
                 background: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(34,197,94,0.1)",

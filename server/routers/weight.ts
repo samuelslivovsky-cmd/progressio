@@ -1,7 +1,22 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, trainerProcedure } from "../trpc";
 
 export const weightRouter = router({
+  /** Tréner: zoznam váh klienta (read-only). */
+  listForClient: trainerProcedure
+    .input(z.object({ clientId: z.string(), limit: z.number().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const link = await ctx.prisma.clientTrainer.findFirst({
+        where: { trainerId: ctx.profile.id, clientId: input.clientId },
+      });
+      if (!link) return [];
+      return ctx.prisma.weightLog.findMany({
+        where: { profileId: input.clientId },
+        orderBy: { loggedAt: "desc" },
+        take: input.limit,
+      });
+    }),
+
   list: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(100).default(30) }))
     .query(({ ctx, input }) =>

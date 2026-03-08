@@ -24,11 +24,21 @@ type LandingCtaProps = {
   dashboardHref: string;
 };
 
+const CTA_CSS = `
+  @media (max-width: 767px) {
+    .landing-cta-wrap { padding: 56px 0 64px !important; }
+    .landing-cta-wrap h2 { font-size: clamp(26px, 6vw, 58px) !important; margin-bottom: 16px !important; }
+    .landing-cta-wrap p { font-size: 16px !important; margin-bottom: 32px !important; }
+    .landing-cta-wrap a { padding: 12px 24px !important; font-size: 14px !important; }
+  }
+`;
+
 export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
   const { ref, visible } = useVisible(0.2);
 
   return (
     <div
+      className="landing-cta-wrap"
       style={{
         background: "transparent",
         padding: "100px 0 120px",
@@ -36,6 +46,7 @@ export function LandingCta({ role, dashboardHref }: LandingCtaProps) {
         overflow: "hidden",
       }}
     >
+      <style>{CTA_CSS}</style>
       {/* Glow orb */}
       <div
         style={{

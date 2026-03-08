@@ -18,30 +18,51 @@ enum MeasurementUnit {
   INCH
 }
 
+enum AlertType {
+  INACTIVE
+  PLATEAU
+  LOW_ADHERENCE
+  SKIPPED_EXERCISE
+  DROP_OFF_RISK
+  GOAL_REACHED
+  MILESTONE
+}
+
 model Profile {
-  id        String   @id @default(cuid())
-  userId    String   @unique @map("user_id")
-  role      Role
-  name      String
-  email     String   @unique
-  avatarUrl String?  @map("avatar_url")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  role             Role
+  name             String
+  email            String   @unique
+  avatarUrl        String?  @map("avatar_url")
+  goalWeight       Float?   @map("goal_weight")
+  height           Float?   @map("height")
+  age              Int?     @map("age")
+  activityLevel    String?  @map("activity_level")
+  subscriptionTier String   @default("FREE") @map("subscription_tier")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   // Trainer relations
-  clients         ClientTrainer[] @relation("TrainerClients")
-  mealPlans       MealPlan[]
-  mealTemplates   MealTemplate[]
-  trainingPlans   TrainingPlan[]
+  clients       ClientTrainer[] @relation("TrainerClients")
+  mealPlans     MealPlan[]
+  mealTemplates MealTemplate[]
+  trainingPlans TrainingPlan[]
 
   // Client relations
-  trainerRelation ClientTrainer?  @relation("ClientProfile")
-  weightLogs      WeightLog[]
-  measurements    Measurement[]
-  foodLogs        FoodLog[]
-  workoutLogs     WorkoutLog[]
-  assignedMealPlan    MealPlanAssignment[]
-  assignedTrainingPlan TrainingPlanAssignment[]
+  trainerRelation       ClientTrainer?           @relation("ClientProfile")
+  weightLogs            WeightLog[]
+  measurements          Measurement[]
+  foodLogs              FoodLog[]
+  workoutLogs           WorkoutLog[]
+  assignedMealPlan      MealPlanAssignment[]
+  assignedTrainingPlan  TrainingPlanAssignment[]
+  clientTrainingPlans   ClientTrainingPlan[]
+  alertsAsTrainer       Alert[]                  @relation("AlertTrainer")
+  alertsAsClient        Alert[]                  @relation("AlertClient")
+  analyticsSnapshots   AnalyticsSnapshot[]
+  weeklySummaries       WeeklySummary[]
+  aiChatMessages        AiChatMessage[]
 
   @@map("profiles")
 }
@@ -57,24 +78,65 @@ model ClientTrainer {
   @@map("client_trainer")
 }
 
+model Alert {
+  id        String    @id @default(cuid())
+  trainer   Profile   @relation("AlertTrainer", fields: [trainerId], references: [id])
+  trainerId String    @map("trainer_id")
+  client    Profile   @relation("AlertClient", fields: [clientId], references: [id])
+  clientId  String    @map("client_id")
+  type      AlertType
+  severity  String
+  message   String
+  resolved  Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("alerts")
+}
+
+model AnalyticsSnapshot {
+  id                String   @id @default(cuid())
+  client            Profile  @relation(fields: [clientId], references: [id])
+  clientId          String   @map("client_id")
+  date              DateTime @db.Date
+  adherenceScore    Float    @map("adherence_score")
+  calorieAdherence  Float    @map("calorie_adherence")
+  trainingAdherence Float    @map("training_adherence")
+  dropOffScore      Float    @map("drop_off_score")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("analytics_snapshots")
+}
+
+model WeeklySummary {
+  id         String   @id @default(cuid())
+  client     Profile  @relation(fields: [clientId], references: [id])
+  clientId   String   @map("client_id")
+  weekStart  DateTime @map("week_start") @db.Date
+  content    String   // AI-generated markdown text
+  highlights Json?    // { adherence, avgKcal, weightDelta, workoutsCompleted }
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("weekly_summaries")
+}
+
 // ─── Weight & Measurements ───────────────────────────────────────────
 
 model WeightLog {
-  id        String   @id @default(cuid())
-  profile   Profile  @relation(fields: [profileId], references: [id])
-  profileId String   @map("profile_id")
+  id        String          @id @default(cuid())
+  profile   Profile         @relation(fields: [profileId], references: [id])
+  profileId String          @map("profile_id")
   weight    Float
   unit      MeasurementUnit @default(KG)
   note      String?
-  loggedAt  DateTime @default(now()) @map("logged_at")
+  loggedAt  DateTime        @default(now()) @map("logged_at")
 
   @@map("weight_logs")
 }
 
 model Measurement {
-  id        String   @id @default(cuid())
-  profile   Profile  @relation(fields: [profileId], references: [id])
-  profileId String   @map("profile_id")
+  id        String          @id @default(cuid())
+  profile   Profile         @relation(fields: [profileId], references: [id])
+  profileId String          @map("profile_id")
   chest     Float?
   waist     Float?
   hips      Float?
@@ -84,7 +146,7 @@ model Measurement {
   neck      Float?
   unit      MeasurementUnit @default(CM)
   note      String?
-  loggedAt  DateTime @default(now()) @map("logged_at")
+  loggedAt  DateTime        @default(now()) @map("logged_at")
 
   @@map("measurements")
 }
@@ -130,7 +192,7 @@ model FoodLogItem {
   food      Food    @relation(fields: [foodId], references: [id])
   foodId    String  @map("food_id")
   amount    Float
-  mealType  String  @map("meal_type") // breakfast, lunch, dinner, snack
+  mealType  String  @map("meal_type") // breakfast, desiata, lunch, olovrant, dinner
 
   @@map("food_log_items")
 }
@@ -138,16 +200,16 @@ model FoodLogItem {
 // ─── Meal Plans ──────────────────────────────────────────────────────
 
 model MealPlan {
-  id                   String   @id @default(cuid())
-  trainer              Profile  @relation(fields: [trainerId], references: [id])
-  trainerId            String   @map("trainer_id")
-  name                 String
-  description          String?
-  calorieTargetPerDay  Int?     @map("calorie_target_per_day")
-  days                 MealPlanDay[]
-  assignments          MealPlanAssignment[]
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+  id                  String               @id @default(cuid())
+  trainer             Profile              @relation(fields: [trainerId], references: [id])
+  trainerId           String               @map("trainer_id")
+  name                String
+  description         String?
+  calorieTargetPerDay Int?                 @map("calorie_target_per_day")
+  days                MealPlanDay[]
+  assignments         MealPlanAssignment[]
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
 
   @@map("meal_plans")
 }
@@ -166,7 +228,7 @@ model Meal {
   id            String      @id @default(cuid())
   mealPlanDay   MealPlanDay @relation(fields: [mealPlanDayId], references: [id])
   mealPlanDayId String      @map("meal_plan_day_id")
-  name          String      // breakfast, lunch, dinner, snack
+  name          String // breakfast, desiata, lunch, olovrant, dinner
   items         MealItem[]
 
   @@map("meals")
@@ -184,12 +246,12 @@ model MealItem {
 }
 
 model MealPlanAssignment {
-  id         String   @id @default(cuid())
-  client     Profile  @relation(fields: [clientId], references: [id])
-  clientId   String   @map("client_id")
-  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id])
-  mealPlanId String   @map("meal_plan_id")
-  startDate  DateTime @map("start_date")
+  id         String    @id @default(cuid())
+  client     Profile   @relation(fields: [clientId], references: [id])
+  clientId   String    @map("client_id")
+  mealPlan   MealPlan  @relation(fields: [mealPlanId], references: [id])
+  mealPlanId String    @map("meal_plan_id")
+  startDate  DateTime  @map("start_date")
   endDate    DateTime? @map("end_date")
   note       String?
 
@@ -199,22 +261,22 @@ model MealPlanAssignment {
 // ─── Meal templates (uložené jedlá) ───────────────────────────────────
 
 model MealTemplate {
-  id        String   @id @default(cuid())
-  trainer   Profile  @relation(fields: [trainerId], references: [id])
-  trainerId String   @map("trainer_id")
+  id        String             @id @default(cuid())
+  trainer   Profile            @relation(fields: [trainerId], references: [id])
+  trainerId String             @map("trainer_id")
   name      String
   items     MealTemplateItem[]
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime           @default(now()) @map("created_at")
 
   @@map("meal_templates")
 }
 
 model MealTemplateItem {
-  id             String      @id @default(cuid())
+  id             String       @id @default(cuid())
   mealTemplate   MealTemplate @relation(fields: [mealTemplateId], references: [id], onDelete: Cascade)
-  mealTemplateId String      @map("meal_template_id")
-  food           Food        @relation(fields: [foodId], references: [id])
-  foodId         String      @map("food_id")
+  mealTemplateId String       @map("meal_template_id")
+  food           Food         @relation(fields: [foodId], references: [id])
+  foodId         String       @map("food_id")
   amount         Float
 
   @@map("meal_template_items")
@@ -223,41 +285,42 @@ model MealTemplateItem {
 // ─── Training ────────────────────────────────────────────────────────
 
 model Exercise {
-  id           String        @id @default(cuid())
-  externalId   String?        @unique @map("external_id") // ExerciseDB API id
+  id           String   @id @default(cuid())
+  externalId   String?  @unique @map("external_id") // ExerciseDB API id
   name         String
   description  String?
-  muscleGroups String[]      @map("muscle_groups")
+  muscleGroups String[] @map("muscle_groups")
   equipment    String?
-  videoUrl     String?       @map("video_url")
+  videoUrl     String?  @map("video_url")
 
-  trainingPlanExercises TrainingPlanExercise[]
-  workoutLogItems       WorkoutLogItem[]
+  trainingPlanExercises     TrainingPlanExercise[]
+  clientTrainingPlanExercises ClientTrainingPlanExercise[]
+  workoutLogItems           WorkoutLogItem[]
 
   @@map("exercises")
 }
 
 model TrainingPlan {
-  id          String   @id @default(cuid())
-  trainer     Profile  @relation(fields: [trainerId], references: [id])
-  trainerId   String   @map("trainer_id")
+  id          String                   @id @default(cuid())
+  trainer     Profile                  @relation(fields: [trainerId], references: [id])
+  trainerId   String                   @map("trainer_id")
   name        String
   description String?
   days        TrainingPlanDay[]
   assignments TrainingPlanAssignment[]
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
 
   @@map("training_plans")
 }
 
 model TrainingPlanDay {
-  id             String       @id @default(cuid())
-  trainingPlan   TrainingPlan @relation(fields: [trainingPlanId], references: [id])
-  trainingPlanId String       @map("training_plan_id")
-  dayNumber      Int          @map("day_number")
-  name           String?      // e.g. "Push Day", "Legs"
-  isRestDay      Boolean      @default(false) @map("is_rest_day")
+  id             String                 @id @default(cuid())
+  trainingPlan   TrainingPlan           @relation(fields: [trainingPlanId], references: [id])
+  trainingPlanId String                 @map("training_plan_id")
+  dayNumber      Int                    @map("day_number")
+  name           String? // e.g. "Push Day", "Legs"
+  isRestDay      Boolean                @default(false) @map("is_rest_day")
   exercises      TrainingPlanExercise[]
 
   @@map("training_plan_days")
@@ -270,7 +333,7 @@ model TrainingPlanExercise {
   exercise          Exercise        @relation(fields: [exerciseId], references: [id])
   exerciseId        String          @map("exercise_id")
   sets              Int
-  reps              String          // can be "8-12" or "10"
+  reps              String // can be "8-12" or "10"
   restSeconds       Int?            @map("rest_seconds")
   note              String?
   order             Int
@@ -290,39 +353,93 @@ model TrainingPlanAssignment {
   @@map("training_plan_assignments")
 }
 
+// Vlastný tréningový plán klienta (bez trénera)
+model ClientTrainingPlan {
+  id          String                     @id @default(cuid())
+  profile     Profile                    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId   String                     @map("profile_id")
+  name        String
+  description String?
+  days        ClientTrainingPlanDay[]
+  createdAt   DateTime                   @default(now()) @map("created_at")
+  updatedAt   DateTime                   @updatedAt @map("updated_at")
+
+  @@map("client_training_plans")
+}
+
+model ClientTrainingPlanDay {
+  id                   String                        @id @default(cuid())
+  clientTrainingPlan   ClientTrainingPlan             @relation(fields: [clientTrainingPlanId], references: [id], onDelete: Cascade)
+  clientTrainingPlanId String                        @map("client_training_plan_id")
+  dayNumber            Int                           @map("day_number")
+  name                 String?                       // e.g. "Push", "Nohy"
+  isRestDay            Boolean                       @default(false) @map("is_rest_day")
+  exercises            ClientTrainingPlanExercise[]
+
+  @@map("client_training_plan_days")
+}
+
+model ClientTrainingPlanExercise {
+  id                   String                @id @default(cuid())
+  clientTrainingPlanDay ClientTrainingPlanDay @relation(fields: [clientTrainingPlanDayId], references: [id], onDelete: Cascade)
+  clientTrainingPlanDayId String              @map("client_training_plan_day_id")
+  exercise             Exercise              @relation(fields: [exerciseId], references: [id])
+  exerciseId           String                @map("exercise_id")
+  sets                 Int
+  reps                 String                // e.g. "10" or "8-12"
+  restSeconds          Int?                  @map("rest_seconds")
+  note                 String?
+  order                Int
+
+  @@map("client_training_plan_exercises")
+}
+
 model WorkoutLog {
-  id          String         @id @default(cuid())
-  profile     Profile        @relation(fields: [profileId], references: [id])
-  profileId   String         @map("profile_id")
-  date        DateTime       @db.Date
+  id          String           @id @default(cuid())
+  profile     Profile          @relation(fields: [profileId], references: [id])
+  profileId   String           @map("profile_id")
+  date        DateTime         @db.Date
   name        String?
-  durationMin Int?           @map("duration_min")
+  durationMin Int?             @map("duration_min")
   items       WorkoutLogItem[]
   note        String?
-  createdAt   DateTime       @default(now()) @map("created_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
 
   @@map("workout_logs")
 }
 
 model WorkoutLogItem {
-  id           String     @id @default(cuid())
-  workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id])
-  workoutLogId String     @map("workout_log_id")
-  exercise     Exercise   @relation(fields: [exerciseId], references: [id])
-  exerciseId   String     @map("exercise_id")
+  id           String       @id @default(cuid())
+  workoutLog   WorkoutLog   @relation(fields: [workoutLogId], references: [id])
+  workoutLogId String       @map("workout_log_id")
+  exercise     Exercise     @relation(fields: [exerciseId], references: [id])
+  exerciseId   String       @map("exercise_id")
   sets         WorkoutSet[]
 
   @@map("workout_log_items")
 }
 
 model WorkoutSet {
-  id             String         @id @default(cuid())
-  workoutLogItem WorkoutLogItem @relation(fields: [workoutLogItemId], references: [id])
-  workoutLogItemId String       @map("workout_log_item_id")
-  reps           Int?
-  weightKg       Float?         @map("weight_kg")
-  durationSec    Int?           @map("duration_sec")
-  note           String?
+  id               String         @id @default(cuid())
+  workoutLogItem   WorkoutLogItem @relation(fields: [workoutLogItemId], references: [id])
+  workoutLogItemId String         @map("workout_log_item_id")
+  reps             Int?
+  weightKg         Float?         @map("weight_kg")
+  durationSec      Int?           @map("duration_sec")
+  note             String?
 
   @@map("workout_sets")
+}
+
+// ─── AI (Klient AI tier) ─────────────────────────────────────────────
+
+model AiChatMessage {
+  id        String   @id @default(cuid())
+  client    Profile  @relation(fields: [clientId], references: [id])
+  clientId  String   @map("client_id")
+  role      String   // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("ai_chat_messages")
 }

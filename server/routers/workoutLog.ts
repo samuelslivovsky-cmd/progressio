@@ -1,7 +1,23 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, trainerProcedure } from "../trpc";
 
 export const workoutLogRouter = router({
+  /** Tréner: zoznam workout logov klienta (read-only). */
+  listForClient: trainerProcedure
+    .input(z.object({ clientId: z.string(), limit: z.number().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const link = await ctx.prisma.clientTrainer.findFirst({
+        where: { trainerId: ctx.profile.id, clientId: input.clientId },
+      });
+      if (!link) return [];
+      return ctx.prisma.workoutLog.findMany({
+        where: { profileId: input.clientId },
+        orderBy: { date: "desc" },
+        take: input.limit,
+        include: { items: { include: { exercise: true, sets: true } } },
+      });
+    }),
+
   byDate: protectedProcedure
     .input(z.object({ date: z.string() }))
     .query(({ ctx, input }) =>
@@ -73,5 +89,65 @@ export const workoutLogRouter = router({
       });
 
       return item;
+    }),
+
+  /** Vytvorí celý tréning naraz: log + položky + série. Pre „Dokončiť tréning“. */
+  complete: protectedProcedure
+    .input(
+      z.object({
+        date: z.string(),
+        name: z.string().optional(),
+        durationMin: z.number().optional(),
+        note: z.string().optional(),
+        items: z.array(
+          z.object({
+            exerciseId: z.string(),
+            sets: z.array(
+              z.object({
+                reps: z.number().optional(),
+                weightKg: z.number().optional(),
+                durationSec: z.number().optional(),
+                note: z.string().optional(),
+              })
+            ),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const date = new Date(input.date);
+      const log = await ctx.prisma.workoutLog.create({
+        data: {
+          profileId: ctx.profile.id,
+          date,
+          name: input.name,
+          durationMin: input.durationMin,
+          note: input.note,
+        },
+      });
+
+      for (const item of input.items) {
+        const logItem = await ctx.prisma.workoutLogItem.create({
+          data: { workoutLogId: log.id, exerciseId: item.exerciseId },
+        });
+        if (item.sets.length > 0) {
+          await ctx.prisma.workoutSet.createMany({
+            data: item.sets.map((set) => ({
+              workoutLogItemId: logItem.id,
+              reps: set.reps ?? null,
+              weightKg: set.weightKg ?? null,
+              durationSec: set.durationSec ?? null,
+              note: set.note ?? null,
+            })),
+          });
+        }
+      }
+
+      return ctx.prisma.workoutLog.findUnique({
+        where: { id: log.id },
+        include: {
+          items: { include: { exercise: true, sets: true } },
+        },
+      });
     }),
 });

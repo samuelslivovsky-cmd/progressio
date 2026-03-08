@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { Profile } from "@prisma/client";
+import { trpc } from "@/lib/trpc/client";
 import {
   Sidebar,
   SidebarContent,
@@ -36,7 +37,6 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 
 const trainerNav = [
   { title: "Dashboard", url: "/trainer", icon: LayoutDashboard },
@@ -63,6 +63,10 @@ interface AppSidebarProps {
 export function AppSidebar({ profile }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: unresolvedCount = 0 } = trpc.analytics.getUnresolvedAlertCount.useQuery(
+    undefined,
+    { enabled: profile.role === "TRAINER" }
+  );
   const nav = profile.role === "TRAINER" ? trainerNav : clientNav;
 
   async function handleSignOut() {
@@ -89,15 +93,23 @@ export function AppSidebar({ profile }: AppSidebarProps) {
             <SidebarMenu className="gap-1">
               {nav.map((item) => (
                 <SidebarMenuItem key={item.url} className="w-full">
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link
-                      href={item.url}
-                      className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 h-8 text-left [&_svg]:size-4 [&_svg]:shrink-0"
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                  <SidebarMenuButton
+                    isActive={pathname === item.url}
+                    render={
+                      <Link
+                        href={item.url}
+                        className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 h-8 text-left [&_svg]:size-4 [&_svg]:shrink-0"
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate flex-1">{item.title}</span>
+                        {profile.role === "TRAINER" && item.url === "/trainer" && unresolvedCount > 0 && (
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-medium text-destructive-foreground">
+                            {unresolvedCount > 99 ? "99+" : unresolvedCount}
+                          </span>
+                        )}
+                      </Link>
+                    }
+                  />
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -109,28 +121,27 @@ export function AppSidebar({ profile }: AppSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="w-full">
-                  <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium flex-shrink-0">
-                    {profile.name[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {profile.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {profile.email}
-                    </p>
-                  </div>
-                  <ChevronUp className="ml-auto h-4 w-4" />
-                </SidebarMenuButton>
+              <DropdownMenuTrigger className="w-full cursor-pointer flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 outline-none transition-colors [&_svg]:size-4 [&_svg]:shrink-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
+                  {profile.name[0].toUpperCase()}
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {profile.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {profile.email}
+                  </p>
+                </div>
+                <ChevronUp className="ml-auto h-4 w-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" className="w-56">
-                <DropdownMenuItem asChild>
-                  <Link href="/profile" className="flex items-center">
-                    <User className="mr-2 h-4 w-4 shrink-0" />
-                    <span>Profil</span>
-                  </Link>
+                <DropdownMenuContent side="top" className="w-56">
+                <DropdownMenuItem
+                  className="flex items-center cursor-pointer"
+                  onClick={() => router.push("/profile")}
+                >
+                  <User className="mr-2 h-4 w-4 shrink-0" />
+                  <span>Profil</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleSignOut}

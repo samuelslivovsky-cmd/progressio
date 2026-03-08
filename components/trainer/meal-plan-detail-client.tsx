@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,16 +21,18 @@ type DeleteConfirm = "day" | "meal" | "item" | null;
 
 const MEAL_TYPES = [
   { value: "breakfast" as const, label: "Raňajky" },
+  { value: "desiata" as const, label: "Desiata" },
   { value: "lunch" as const, label: "Obed" },
+  { value: "olovrant" as const, label: "Olovrant" },
   { value: "dinner" as const, label: "Večera" },
-  { value: "snack" as const, label: "Presnívka" },
 ];
 
 const MEAL_LABELS: Record<string, string> = {
   breakfast: "Raňajky",
+  desiata: "Desiata",
   lunch: "Obed",
+  olovrant: "Olovrant",
   dinner: "Večera",
-  snack: "Presnívka",
 };
 
 type Food = {
@@ -191,11 +194,11 @@ export function MealPlanDetailClient({ mealPlan }: MealPlanDetailClientProps) {
                   </CardTitle>
                   <div className="flex items-center gap-1">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Plus className="h-3.5 w-3.5" />
-                          Pridať jedlo
-                        </Button>
+                      <DropdownMenuTrigger
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "inline-flex items-center gap-1.5")}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Pridať jedlo
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {MEAL_TYPES.map(({ value, label }) => (

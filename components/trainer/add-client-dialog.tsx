@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -43,11 +44,11 @@ export function AddClientDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <UserPlus className="h-4 w-4" />
-          Pridať klienta
-        </Button>
+      <DialogTrigger
+        className={cn(buttonVariants(), "inline-flex items-center gap-2")}
+      >
+        <UserPlus className="h-4 w-4" />
+        Pridať klienta
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { HeroBackground } from "./hero-background";
 
 type LandingHeroProps = {
@@ -28,23 +29,19 @@ export function LandingHero({ role, dashboardHref }: LandingHeroProps) {
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-4">
             {role ? (
-              <Button size="lg" asChild>
-                <Link href={dashboardHref} className="inline-flex items-center gap-2">
-                  Prejsť do dashboardu
-                  <ChevronRight className="size-4 shrink-0" />
-                </Link>
-              </Button>
+              <Link href={dashboardHref} className={cn(buttonVariants({ size: "lg" }), "inline-flex items-center gap-2")}>
+                Prejsť do dashboardu
+                <ChevronRight className="size-4 shrink-0" />
+              </Link>
             ) : (
               <>
-                <Button size="lg" asChild>
-                  <Link href="/register" className="inline-flex items-center gap-2">
-                    Začať zadarmo
-                    <ChevronRight className="size-4 shrink-0" />
-                  </Link>
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <Link href="/login">Prihlásiť sa</Link>
-                </Button>
+                <Link href="/register" className={cn(buttonVariants({ size: "lg" }), "inline-flex items-center gap-2")}>
+                  Začať zadarmo
+                  <ChevronRight className="size-4 shrink-0" />
+                </Link>
+                <Link href="/login" className={cn(buttonVariants({ size: "lg", variant: "outline" }), "inline-flex")}>
+                  Prihlásiť sa
+                </Link>
               </>
             )}
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,15 +17,33 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddMealItemDialog } from "@/components/trainer/add-meal-item-dialog";
-import { Plus, Trash2, Utensils } from "lucide-react";
+import { Plus, Trash2, Utensils, Search, Pencil } from "lucide-react";
+
+const SEARCH_DEBOUNCE_MS = 200;
 
 export function MealTemplatesList() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
   const [addItemTemplateId, setAddItemTemplateId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [editTemplate, setEditTemplate] = useState<{ id: string; name: string } | null>(null);
+  const [editName, setEditName] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchFilter(searchInput), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const { data: templates = [], refetch } = trpc.mealTemplate.list.useQuery();
+  const filteredTemplates = useMemo(
+    () =>
+      templates.filter((t) =>
+        t.name.toLowerCase().includes(searchFilter.toLowerCase())
+      ),
+    [templates, searchFilter]
+  );
 
   const create = trpc.mealTemplate.create.useMutation({
     onSuccess: () => {
@@ -52,26 +70,53 @@ export function MealTemplatesList() {
     onError: (e) => toast.error(e.message),
   });
 
+  const updateTemplate = trpc.mealTemplate.update.useMutation({
+    onSuccess: () => {
+      toast.success("Názov zmenený");
+      setEditTemplate(null);
+      setEditName("");
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-4">
-      <Button onClick={() => setCreateOpen(true)}>
-        <Plus className="h-4 w-4" />
-        Nové jedlo
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Hľadaj jedlo..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Nové jedlo
+        </Button>
+      </div>
 
-      {templates.length === 0 ? (
+      {filteredTemplates.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Utensils className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">Žiadne uložené jedlá</p>
+            <p className="font-medium">
+              {templates.length === 0
+                ? "Žiadne uložené jedlá"
+                : "Žiadne jedlá nevyhovujú hľadaniu"}
+            </p>
             <p className="text-sm mt-1">
-              Vytvor jedlo a pridaj do neho potraviny. Potom ho môžeš jedným klikom pridať do ľubovoľného dňa v jedálničku.
+              {templates.length === 0
+                ? "Vytvor jedlo a pridaj do neho potraviny. Potom ho môžeš jedným klikom pridať do ľubovoľného dňa v jedálničku."
+                : "Skús zmeniť hľadaný výraz."}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {templates.map((t) => {
+          {filteredTemplates.map((t) => {
             const totalCal = t.items.reduce(
               (sum, it) =>
                 sum + (it.amount / (it.food.servingSize || 100)) * it.food.calories,
@@ -107,6 +152,18 @@ export function MealTemplatesList() {
                     >
                       <Plus className="h-3.5 w-3.5" />
                       Pridať položku
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setEditTemplate({ id: t.id, name: t.name });
+                        setEditName(t.name);
+                      }}
+                      title="Upraviť názov"
+                    >
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -219,6 +276,43 @@ export function MealTemplatesList() {
           loading={deleteTemplate.isPending}
         />
       )}
+
+      <Dialog
+        open={editTemplate !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditTemplate(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upraviť názov jedla</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-template-name">Názov</Label>
+              <Input
+                id="edit-template-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTemplate(null)}>
+              Zrušiť
+            </Button>
+            <Button
+              onClick={() => {
+                if (!editTemplate || !editName.trim()) return;
+                updateTemplate.mutate({ id: editTemplate.id, name: editName.trim() });
+              }}
+              disabled={!editName.trim() || updateTemplate.isPending}
+            >
+              Uložiť
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

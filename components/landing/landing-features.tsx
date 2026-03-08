@@ -212,13 +212,23 @@ function Column({
   );
 }
 
+const FEAT_CSS = `
+  @media (max-width: 767px) {
+    .landing-feat-wrap { padding: 56px 0 !important; }
+    .landing-feat-head { margin-bottom: 40px !important; }
+    .landing-feat-head p { font-size: 15px !important; }
+    .landing-feat-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  }
+`;
+
 export function LandingFeatures() {
   return (
-    <div style={{ background: "transparent", padding: "100px 0" }}>
+    <div className="landing-feat-wrap" style={{ background: "transparent", padding: "100px 0" }}>
+      <style>{FEAT_CSS}</style>
       <div
         style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px" }}
       >
-        <div style={{ textAlign: "center", marginBottom: "72px" }}>
+        <div className="landing-feat-head" style={{ textAlign: "center", marginBottom: "72px" }}>
           <div
             style={{
               fontSize: "11px",
@@ -260,6 +270,7 @@ export function LandingFeatures() {
         </div>
 
         <div
+          className="landing-feat-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",

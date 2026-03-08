@@ -8,9 +8,10 @@ import { format } from "date-fns";
 
 const MEAL_LABELS: Record<string, string> = {
   breakfast: "Raňajky",
+  desiata: "Desiata",
   lunch: "Obed",
+  olovrant: "Olovrant",
   dinner: "Večera",
-  snack: "Presnívka",
 };
 
 type Food = {

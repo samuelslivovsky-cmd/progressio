@@ -17,6 +17,10 @@ export default async function MealPlansPage() {
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { days: true, assignments: true } },
+      assignments: {
+        include: { client: { select: { id: true, name: true } } },
+        orderBy: { startDate: "desc" },
+      },
     },
   });
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, protectedProcedure, trainerProcedure } from "../trpc";
 
 const measurementInput = z.object({
   chest: z.number().optional(),
@@ -15,6 +15,21 @@ const measurementInput = z.object({
 });
 
 export const measurementRouter = router({
+  /** Tréner: zoznam meraní klienta (read-only). */
+  listForClient: trainerProcedure
+    .input(z.object({ clientId: z.string(), limit: z.number().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      const link = await ctx.prisma.clientTrainer.findFirst({
+        where: { trainerId: ctx.profile.id, clientId: input.clientId },
+      });
+      if (!link) return [];
+      return ctx.prisma.measurement.findMany({
+        where: { profileId: input.clientId },
+        orderBy: { loggedAt: "desc" },
+        take: input.limit,
+      });
+    }),
+
   list: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
     .query(({ ctx, input }) =>

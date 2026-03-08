@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useRef, useEffect, useState } from "react";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip as TooltipCard } from "@/components/ui/tooltip-card";
 
 function useVisible(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -30,6 +33,13 @@ const plans = [
     href: "/register",
     highlighted: false,
     aiTier: false,
+    mobileHighlights: [
+      { label: "Denník stravy, kalórie a makrá", tooltip: "Loguješ jedlo každý deň, kalórie a makrá (bielkoviny, sacharidy, tuky) sa počítajú automaticky." },
+      { label: "Tréningový denník a progres", tooltip: "Zaznamenávaš cvičenia, série, opakovania a záťaž. Vidíš progres za každý cvik v čase." },
+      { label: "Váha, merania, grafy", tooltip: "Sleduješ váhu, obvody a percentá tuku v prehľadných grafoch." },
+      { label: "Progress fotky", tooltip: "Fotky sa ukladajú chronologicky. Porovnáš začiatok a súčasnosť jedným pohľadom." },
+      { label: "Plán od trénera", tooltip: "Dostaneš stravovací a tréningový plán od trénera a plníš ho podľa pokynov." },
+    ],
   },
   {
     id: "client-ai",
@@ -41,6 +51,13 @@ const plans = [
     href: "/register",
     highlighted: false,
     aiTier: true,
+    mobileHighlights: [
+      { label: "Všetko z plánu Klient", tooltip: "Všetky funkcie pre klienta — denník stravy, tréningy, váha, progress fotky. Bez trénera, AI preberá jeho úlohu." },
+      { label: "Týždenné AI hodnotenie", tooltip: "Každý týždeň AI zhodnotí tvoj týždeň (adherencia, kalórie, váha) a napíše konkrétne odporúčania." },
+      { label: "Výpočet TDEE a makier", tooltip: "Systém ti vypočíta denný výdaj energie (TDEE) a odporúča denné kalórie a rozloženie makier podľa cieľa." },
+      { label: "Chat s AI koučom 24/7", tooltip: "Pýtaš sa čokoľvek (napr. „bolí ma chrbát, mám cvičiť?“). AI odpovedá na základe tvojich dát a plánu." },
+      { label: "Predikcia dosiahnutia cieľa", tooltip: "Podľa trendu váhy z posledných týždňov systém odhadne, kedy dosiahneš cieľovú váhu." },
+    ],
   },
   {
     id: "trainer-starter",
@@ -52,6 +69,12 @@ const plans = [
     href: "/register",
     highlighted: false,
     aiTier: false,
+    mobileHighlights: [
+      { label: "Až 3 klienti", tooltip: "Môžeš pridať až 3 klientov. Pozvanie cez odkaz alebo email." },
+      { label: "Stravovacie a tréningové plány", tooltip: "Vytváraš jedálničky a tréningové plány (cviky, série, opakovania) a priraďuješ ich klientom." },
+      { label: "Pokrok klientov v reálnom čase", tooltip: "Vidíš váhu, logy jedla a tréningov každého klienta tak, ako ich práve zadávajú." },
+      { label: "Email podpora", tooltip: "Pri otázkach nás môžeš kontaktovať cez email." },
+    ],
   },
   {
     id: "trainer-pro",
@@ -63,6 +86,13 @@ const plans = [
     href: "/register",
     highlighted: true,
     aiTier: false,
+    mobileHighlights: [
+      { label: "Neobmedzený počet klientov", tooltip: "Všetko z Tréner Starter plus neobmedzený počet klientov." },
+      { label: "Drop-off riziko a prioritná fronta", tooltip: "Systém hodnotí riziko, že klient prestane. Klienti sú zoradení podľa naliehavosti, nie abecedne." },
+      { label: "Detekcia plató a vynechaných cvikov", tooltip: "Upozornenie, keď váha stagnuje 3+ týždne alebo keď klient opakovane vynecháva ten istý cvik." },
+      { label: "Navrhnuté akcie pre trénera", tooltip: "Ku každému alertu systém navrhne konkrétny krok (zmeniť plán, poslať správu). Ty len potvrdíš." },
+      { label: "Prioritná podpora", tooltip: "Rýchlejšia odpoveď na tvoje otázky." },
+    ],
   },
 ];
 
@@ -155,17 +185,33 @@ function CellValue({ value, plan }: { value: Cell; plan: typeof plans[0] }) {
   );
 }
 
+const PRICING_CSS = `
+  .landing-pricing-cards { display: none; }
+  @media (max-width: 767px) {
+    .landing-pricing-wrap { padding: 48px 0 56px !important; }
+    .landing-pricing-head { margin-bottom: 32px !important; }
+    .landing-pricing-head p { font-size: 15px !important; }
+    .landing-pricing-outer { padding-left: 16px !important; padding-right: 16px !important; }
+    .landing-pricing-table-desk { display: none !important; }
+    .landing-pricing-cards { display: flex !important; flex-direction: column; gap: 12px; }
+  }
+  @media (min-width: 768px) {
+    .landing-pricing-cards { display: none !important; }
+  }
+`;
+
 export function LandingPricing() {
   const { ref, visible } = useVisible(0.08);
 
   const COLS = "1fr repeat(4, minmax(0, 138px))";
 
   return (
-    <div style={{ background: "transparent", padding: "100px 0" }}>
-      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px" }}>
+    <div className="landing-pricing-wrap" style={{ background: "transparent", padding: "100px 0" }}>
+      <style>{PRICING_CSS}</style>
+      <div className="landing-pricing-outer" style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px" }}>
 
         {/* Heading */}
-        <div style={{ textAlign: "center", marginBottom: "56px" }}>
+        <div className="landing-pricing-head" style={{ textAlign: "center", marginBottom: "56px" }}>
           <div style={{
             fontSize: "11px", fontWeight: 600, color: "#22c55e",
             letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "14px",
@@ -183,19 +229,22 @@ export function LandingPricing() {
           </p>
         </div>
 
-        {/* Table */}
-        <div
-          ref={ref}
-          style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: "20px",
-            overflow: "hidden",
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.6s ease, transform 0.6s ease",
-          }}
-        >
+        <div ref={ref}>
+        {/* Desktop: table */}
+        <div className="landing-pricing-table-desk">
+          <div className="landing-pricing-table-wrap">
+          <div
+            className="landing-pricing-table"
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: "20px",
+              overflow: "visible",
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.6s ease, transform 0.6s ease",
+            }}
+          >
           {/* Plan headers */}
           <div style={{ display: "grid", gridTemplateColumns: COLS, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
             <div style={{ padding: "24px 20px" }}>
@@ -212,13 +261,15 @@ export function LandingPricing() {
               </div>
             </div>
 
-            {plans.map((plan) => {
+            {plans.map((plan, planIndex) => {
               const accentColor = plan.highlighted ? "#22c55e" : plan.aiTier ? "#a78bfa" : "rgba(255,255,255,0.5)";
               const topBarColor = plan.highlighted ? "#22c55e" : plan.aiTier ? "#a78bfa" : "transparent";
               const bgColor = plan.highlighted ? "rgba(34,197,94,0.05)" : plan.aiTier ? "rgba(167,139,250,0.04)" : "transparent";
+              const isLastPlan = planIndex === plans.length - 1;
               return (
                 <div
                   key={plan.id}
+                  className="landing-pricing-plan"
                   style={{
                     padding: "20px 14px",
                     textAlign: "center",
@@ -228,30 +279,43 @@ export function LandingPricing() {
                   }}
                 >
                   {(plan.highlighted || plan.aiTier) && (
-                    <div style={{
-                      position: "absolute", top: 0, left: 0, right: 0,
-                      height: "2px", background: topBarColor,
-                      boxShadow: `0 0 12px ${topBarColor}80`,
-                    }} />
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: isLastPlan ? "20px" : "2px",
+                        overflow: "hidden",
+                        borderTopRightRadius: isLastPlan ? "20px" : undefined,
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute", top: 0, left: 0, right: 0,
+                        height: "2px", background: topBarColor,
+                        boxShadow: `0 0 12px ${topBarColor}80`,
+                      }} />
+                    </div>
                   )}
                   {plan.highlighted && (
                     <div style={{
-                      position: "absolute", top: "-13px", left: "50%",
+                      position: "absolute", top: "-8px", left: "50%",
                       transform: "translateX(-50%)",
                       background: "#22c55e", color: "#040e07",
                       fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em",
                       padding: "3px 10px", borderRadius: "20px", whiteSpace: "nowrap",
+                      zIndex: 1,
                     }}>
                       Odporúčané
                     </div>
                   )}
-                  <div style={{
+                  <div className="landing-pricing-plan-name" style={{
                     fontSize: "11px", fontWeight: 700, color: accentColor,
                     letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "8px",
                   }}>
                     {plan.name}
                   </div>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "2px", marginBottom: "4px" }}>
+                  <div className="landing-pricing-price" style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "2px", marginBottom: "4px" }}>
                     <span style={{ fontSize: "28px", fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1 }}>
                       {plan.price}
                     </span>
@@ -304,7 +368,7 @@ export function LandingPricing() {
                 background: "rgba(255,255,255,0.02)",
                 borderTop: gi > 0 ? "1px solid rgba(255,255,255,0.07)" : undefined,
               }}>
-                <div style={{
+                <div className="landing-pricing-group" style={{
                   padding: "9px 20px",
                   fontSize: "10px", fontWeight: 700,
                   color: group.label === "AI koučing" ? "#a78bfa" : "#22c55e",
@@ -345,7 +409,7 @@ export function LandingPricing() {
                     background: ri % 2 === 1 ? "rgba(255,255,255,0.01)" : "transparent",
                   }}
                 >
-                  <div style={{
+                  <div className="landing-pricing-feature" style={{
                     padding: "12px 20px",
                     fontSize: "13px",
                     color: "rgba(255,255,255,0.68)",
@@ -439,6 +503,101 @@ export function LandingPricing() {
               </div>
             ))}
           </div>
+          </div>
+        </div>
+        </div>
+
+        {/* Mobile: karty plánov */}
+        <div className="landing-pricing-cards" style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)", transition: "opacity 0.6s ease, transform 0.6s ease" }}>
+          {plans.map((plan) => {
+            const accentColor = plan.highlighted ? "#22c55e" : plan.aiTier ? "#a78bfa" : "rgba(255,255,255,0.6)";
+            const bgColor = plan.highlighted ? "rgba(34,197,94,0.08)" : plan.aiTier ? "rgba(167,139,250,0.08)" : "rgba(255,255,255,0.03)";
+            const borderColor = plan.highlighted ? "rgba(34,197,94,0.25)" : plan.aiTier ? "rgba(167,139,250,0.25)" : "rgba(255,255,255,0.08)";
+            const highlights = "mobileHighlights" in plan && Array.isArray(plan.mobileHighlights) ? plan.mobileHighlights : [];
+            const hasHighlights = highlights.length > 0;
+            return (
+              <div
+                key={plan.id}
+                style={{
+                  background: bgColor,
+                  border: `1px solid ${borderColor}`,
+                  borderRadius: "14px",
+                  padding: "18px 20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: 700, color: accentColor, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "4px" }}>
+                      {plan.name}
+                      {plan.highlighted && (
+                        <span style={{ marginLeft: "8px", fontSize: "10px", background: "#22c55e", color: "#040e07", padding: "2px 8px", borderRadius: "12px" }}>Odporúčané</span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                      <span style={{ fontSize: "24px", fontWeight: 800, color: "#fff" }}>{plan.price}</span>
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)" }}>€ / {plan.period}</span>
+                    </div>
+                  </div>
+                  <Link
+                    href={plan.href}
+                    style={{
+                      display: "inline-block",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      textDecoration: "none",
+                      background: plan.highlighted ? "#22c55e" : plan.aiTier ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.08)",
+                      color: plan.highlighted ? "#040e07" : plan.aiTier ? "#c4b5fd" : "rgba(255,255,255,0.85)",
+                      border: plan.aiTier ? "1px solid rgba(167,139,250,0.35)" : "none",
+                    }}
+                  >
+                    {plan.cta}
+                  </Link>
+                </div>
+                <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)", margin: "10px 0 0", lineHeight: 1.5 }}>
+                  {plan.desc}
+                </p>
+                {hasHighlights && (
+                  <ul style={{ listStyle: "none", padding: 0, margin: "12px 0 0", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {highlights.map((item) => {
+                      const label = typeof item === "string" ? item : item.label;
+                      const tooltipText = typeof item === "string" ? null : item.tooltip;
+                      return (
+                        <li
+                          key={label}
+                          style={{
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.55)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span style={{ color: accentColor, flexShrink: 0 }}>✓</span>
+                          <span style={{ flex: 1 }}>{label}</span>
+                          {tooltipText && (
+                            <TooltipCard
+                              content={<span className="block max-w-[260px] text-left">{tooltipText}</span>}
+                              containerClassName="inline-flex flex-shrink-0"
+                            >
+                              <span style={{ display: "inline-flex", cursor: "pointer", color: "rgba(255,255,255,0.4)", flexShrink: 0 }} aria-label="Viac info">
+                                <Info className="size-3.5" />
+                              </span>
+                            </TooltipCard>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
         </div>
 
         <p style={{ textAlign: "center", marginTop: "20px", fontSize: "13px", color: "rgba(255,255,255,0.28)" }}>

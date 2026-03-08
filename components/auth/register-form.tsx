@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -39,7 +38,6 @@ export function RegisterForm() {
       return;
     }
 
-    // If email confirmation is disabled, session is available immediately
     if (data.session) {
       await fetch("/api/auth/create-profile", {
         method: "POST",
@@ -48,96 +46,131 @@ export function RegisterForm() {
       });
       router.push(role === "TRAINER" ? "/trainer" : "/client");
     } else {
-      // Email confirmation required — profile created in /auth/callback
       router.push("/login?registered=1");
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Registrovať sa</CardTitle>
-        <CardDescription>Vytvor si nový účet</CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
-              {error}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="name">Meno</Label>
-            <Input
-              id="name"
-              placeholder="Ján Novák"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
+    <div className="space-y-8">
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Vytvor si účet</h1>
+        <p className="text-sm text-muted-foreground">
+          Zadaj svoje údaje a začni s Progressio.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md border border-destructive/20">
+            {error}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="jan@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="name">Meno</Label>
+          <Input
+            id="name"
+            placeholder="Ján Novák"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="h-10 shadow-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="jan@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="h-10 shadow-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Heslo</Label>
+          <Input
+            id="password"
+            type="password"
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="h-10 shadow-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Typ účtu</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setRole("CLIENT")}
+              className={`h-10 rounded-lg border text-sm font-medium transition-colors shadow-sm ${
+                role === "CLIENT"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-input bg-background hover:bg-muted/50 hover:ring-2 hover:ring-ring/20"
+              }`}
+            >
+              Klient
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("TRAINER")}
+              className={`h-10 rounded-lg border text-sm font-medium transition-colors shadow-sm ${
+                role === "TRAINER"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-input bg-background hover:bg-muted/50 hover:ring-2 hover:ring-ring/20"
+              }`}
+            >
+              Tréner
+            </button>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Heslo</Label>
-            <Input
-              id="password"
-              type="password"
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Typ účtu</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRole("CLIENT")}
-                className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
-                  role === "CLIENT"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background hover:bg-muted border-input"
-                }`}
-              >
-                Klient
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("TRAINER")}
-                className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
-                  role === "TRAINER"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background hover:bg-muted border-input"
-                }`}
-              >
-                Tréner
-              </button>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3 mt-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Registrujem..." : "Zaregistrovať sa"}
-          </Button>
-          <p className="text-sm text-muted-foreground text-center">
-            Máš účet?{" "}
-            <Link href="/login" className="text-primary hover:underline">
-              Prihlásiť sa
-            </Link>
-          </p>
-        </CardFooter>
+        </div>
+        <Button
+          type="submit"
+          className="w-full h-10 rounded-lg"
+          disabled={loading}
+        >
+          {loading ? "Registrujem..." : "Zaregistrovať sa"}
+        </Button>
       </form>
-    </Card>
+
+      {/* Dashed divider - Aceternity style */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center" aria-hidden>
+          <div className="w-full border-t border-dashed border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase text-muted-foreground">
+          <span className="bg-background px-2">alebo</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 rounded-lg border border-input bg-background shadow-sm ring-offset-background hover:bg-muted/50 hover:ring-2 hover:ring-ring/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled
+        >
+          Google
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 rounded-lg border border-input bg-background shadow-sm ring-offset-background hover:bg-muted/50 hover:ring-2 hover:ring-ring/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled
+        >
+          Apple
+        </Button>
+      </div>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Už máš účet?{" "}
+        <Link href="/login" className="font-medium text-primary hover:underline">
+          Prihlásiť sa
+        </Link>
+      </p>
+    </div>
   );
 }

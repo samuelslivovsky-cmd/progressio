@@ -17,6 +17,25 @@ const legalLinks = [
   { label: "Ochrana súkromia", href: "#" },
 ];
 
+const FOOTER_CSS = `
+  @media (max-width: 767px) {
+    .landing-footer-inner { padding: 40px 16px 28px !important; }
+    .landing-footer-grid {
+      grid-template-columns: 1fr !important;
+      gap: 28px !important;
+      margin-bottom: 28px !important;
+      text-align: center !important;
+    }
+    .landing-footer-grid .landing-footer-brand-desc { max-width: none !important; margin-left: auto !important; margin-right: auto !important; }
+    .landing-footer-grid .landing-footer-links { align-items: center !important; }
+    .landing-footer-bottom {
+      flex-direction: column !important;
+      gap: 12px !important;
+      text-align: center !important;
+    }
+  }
+`;
+
 export function LandingFooter() {
   return (
     <footer
@@ -25,7 +44,9 @@ export function LandingFooter() {
         borderTop: "1px solid rgba(34,197,94,0.08)",
       }}
     >
+      <style>{FOOTER_CSS}</style>
       <div
+        className="landing-footer-inner"
         style={{
           maxWidth: "1100px",
           margin: "0 auto",
@@ -33,6 +54,7 @@ export function LandingFooter() {
         }}
       >
         <div
+          className="landing-footer-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "2fr 1fr 1fr 1fr",
@@ -54,6 +76,7 @@ export function LandingFooter() {
               Progressio
             </div>
             <p
+              className="landing-footer-brand-desc"
               style={{
                 fontSize: "14px",
                 color: "rgba(255,255,255,0.58)",
@@ -81,7 +104,7 @@ export function LandingFooter() {
             >
               Produkt
             </div>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+            <ul className="landing-footer-links" style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
               {productLinks.map((link) => (
                 <li key={link.label}>
                   <Link
@@ -113,7 +136,7 @@ export function LandingFooter() {
             >
               Spolocnost
             </div>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+            <ul className="landing-footer-links" style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
               {companyLinks.map((link) => (
                 <li key={link.label}>
                   <Link
@@ -145,7 +168,7 @@ export function LandingFooter() {
             >
               Pravne
             </div>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+            <ul className="landing-footer-links" style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
               {legalLinks.map((link) => (
                 <li key={link.label}>
                   <Link
@@ -165,6 +188,7 @@ export function LandingFooter() {
         </div>
 
         <div
+          className="landing-footer-bottom"
           style={{
             borderTop: "1px solid rgba(255,255,255,0.05)",
             paddingTop: "24px",

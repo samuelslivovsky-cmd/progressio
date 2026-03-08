@@ -6,7 +6,8 @@ import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -30,16 +31,18 @@ import { format } from "date-fns";
 
 const MEAL_TYPES = [
   { value: "breakfast" as const, label: "Raňajky" },
+  { value: "desiata" as const, label: "Desiata" },
   { value: "lunch" as const, label: "Obed" },
+  { value: "olovrant" as const, label: "Olovrant" },
   { value: "dinner" as const, label: "Večera" },
-  { value: "snack" as const, label: "Presnívka" },
 ];
 
 const MEAL_LABELS: Record<string, string> = {
   breakfast: "Raňajky",
+  desiata: "Desiata",
   lunch: "Obed",
+  olovrant: "Olovrant",
   dinner: "Večera",
-  snack: "Presnívka",
 };
 
 type Food = {
@@ -250,11 +253,12 @@ export function MealPlanEditor({ mealPlan: initialPlan, assignmentCount, clients
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/trainer/plans/meal">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+        <Link
+          href="/trainer/plans/meal"
+          className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">{plan.name}</h1>
           <p className="text-muted-foreground text-sm">
@@ -324,11 +328,11 @@ export function MealPlanEditor({ mealPlan: initialPlan, assignmentCount, clients
                   <CardContent className="py-6">
                     <p className="text-sm text-muted-foreground mb-3">Žiadne jedlá v tomto dni.</p>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Plus className="h-3.5 w-3.5" />
-                          Pridať jedlo
-                        </Button>
+                      <DropdownMenuTrigger
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "inline-flex items-center gap-1.5")}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Pridať jedlo
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {MEAL_TYPES.map(({ value, label }) => (
@@ -439,11 +443,11 @@ export function MealPlanEditor({ mealPlan: initialPlan, assignmentCount, clients
               )}
               {selectedDay.meals.length > 0 && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Plus className="h-3.5 w-3.5" />
-                      Pridať jedlo
-                    </Button>
+                  <DropdownMenuTrigger
+                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "inline-flex items-center gap-1.5")}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Pridať jedlo
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     {MEAL_TYPES.map(({ value, label }) => (

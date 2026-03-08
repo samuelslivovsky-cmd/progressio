@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function LoginForm() {
   const router = useRouter();
@@ -35,52 +34,87 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Prihlásiť sa</CardTitle>
-        <CardDescription>Zadaj svoje prihlasovacie údaje</CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
-              {error}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="jan@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+    <div className="space-y-8">
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Prihlás sa do účtu</h1>
+        <p className="text-sm text-muted-foreground">
+          Vitaj späť! Zadaj svoje údaje.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md border border-destructive/20">
+            {error}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Heslo</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3 mt-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Prihlasujem..." : "Prihlásiť sa"}
-          </Button>
-          <p className="text-sm text-muted-foreground text-center">
-            Nemáš účet?{" "}
-            <Link href="/register" className="text-primary hover:underline">
-              Registrovať sa
-            </Link>
-          </p>
-        </CardFooter>
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="jan@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="h-10 shadow-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Heslo</Label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="h-10 shadow-sm"
+          />
+        </div>
+        <Button
+          type="submit"
+          className="w-full h-10 rounded-lg"
+          disabled={loading}
+        >
+          {loading ? "Prihlasujem..." : "Prihlásiť sa"}
+        </Button>
       </form>
-    </Card>
+
+      {/* Dashed divider - Aceternity style */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center" aria-hidden>
+          <div className="w-full border-t border-dashed border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase text-muted-foreground">
+          <span className="bg-background px-2">alebo</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 rounded-lg border border-input bg-background shadow-sm ring-offset-background hover:bg-muted/50 hover:ring-2 hover:ring-ring/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled
+        >
+          Google
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 rounded-lg border border-input bg-background shadow-sm ring-offset-background hover:bg-muted/50 hover:ring-2 hover:ring-ring/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled
+        >
+          Apple
+        </Button>
+      </div>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Nemáš účet?{" "}
+        <Link href="/register" className="font-medium text-primary hover:underline">
+          Registrovať sa
+        </Link>
+      </p>
+    </div>
   );
 }

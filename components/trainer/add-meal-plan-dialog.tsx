@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,7 +45,7 @@ export function AddMealPlanDialog() {
     e.preventDefault();
     setError(null);
     const target = calorieTarget.trim() ? Number.parseInt(calorieTarget, 10) : undefined;
-    if (calorieTarget.trim() && (Number.isNaN(target) || target < 1)) {
+    if (calorieTarget.trim() && (target == null || Number.isNaN(target) || target < 1)) {
       setError("Kalorický cieľ musí byť kladné číslo");
       return;
     }
@@ -57,11 +58,11 @@ export function AddMealPlanDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4" />
-          Nový jedálniček
-        </Button>
+      <DialogTrigger
+        className={cn(buttonVariants(), "inline-flex items-center gap-2")}
+      >
+        <Plus className="h-4 w-4" />
+        Nový jedálniček
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

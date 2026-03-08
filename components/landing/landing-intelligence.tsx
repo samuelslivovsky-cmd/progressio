@@ -146,13 +146,27 @@ function AlertCard({ alert, delay, visible }: { alert: typeof alerts[0]; delay: 
   );
 }
 
+const INTEL_CSS = `
+  @media (max-width: 767px) {
+    .landing-intel-section { padding: 56px 0 48px !important; }
+    .landing-intel-head { margin-bottom: 40px !important; }
+    .landing-intel-head p { font-size: 15px !important; }
+    .landing-intel-twocol { grid-template-columns: 1fr !important; gap: 32px !important; margin-bottom: 48px !important; }
+    .landing-intel-pillars { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+  }
+  @media (max-width: 480px) {
+    .landing-intel-pillars { grid-template-columns: 1fr !important; }
+  }
+`;
+
 export function LandingIntelligence() {
   const left = useVisible(0.1);
   const right = useVisible(0.1);
   const pillarsRef = useVisible(0.1);
 
   return (
-    <div style={{ padding: "110px 0 100px", position: "relative", overflow: "hidden" }}>
+    <div className="landing-intel-section" style={{ padding: "110px 0 100px", position: "relative", overflow: "hidden" }}>
+      <style>{INTEL_CSS}</style>
       {/* CSS for pulse animation */}
       <style>{`
         @keyframes intel-pulse {
@@ -177,7 +191,7 @@ export function LandingIntelligence() {
       <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px" }}>
 
         {/* Section label + headline */}
-        <div style={{ textAlign: "center", marginBottom: "72px" }}>
+        <div className="landing-intel-head" style={{ textAlign: "center", marginBottom: "72px" }}>
           <div
             style={{
               display: "inline-flex",
@@ -234,6 +248,7 @@ export function LandingIntelligence() {
 
         {/* Two-column: copy + mock alert panel */}
         <div
+          className="landing-intel-twocol"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
@@ -384,6 +399,7 @@ export function LandingIntelligence() {
         {/* Bottom: 6 pillars grid */}
         <div
           ref={pillarsRef.ref}
+          className="landing-intel-pillars"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",

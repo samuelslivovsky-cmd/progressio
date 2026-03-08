@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -227,7 +227,7 @@ export function TrainingPlanDetailClient({
 
   function saveDayName() {
     if (!editingDayNameId) return;
-    updateDay.mutate({ id: editingDayNameId, name: editingDayNameValue.trim() || null });
+    updateDay.mutate({ id: editingDayNameId, name: editingDayNameValue.trim() || undefined });
     setEditingDayNameId(null);
   }
 
@@ -380,10 +380,10 @@ export function TrainingPlanDetailClient({
                     Zrušiť odpočinok
                   </Button>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger
+                      className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+                    >
+                      <MoreVertical className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
@@ -445,10 +445,10 @@ export function TrainingPlanDetailClient({
                         Rest deň?
                       </Button>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
+                        <DropdownMenuTrigger
+                          className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+                        >
+                          <MoreVertical className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
@@ -585,10 +585,10 @@ export function TrainingPlanDetailClient({
                                 {pe.restSeconds != null && ` · ${pe.restSeconds}s`}
                               </span>
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
+                                <DropdownMenuTrigger
+                                  className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => openExerciseDetail(pe)}>

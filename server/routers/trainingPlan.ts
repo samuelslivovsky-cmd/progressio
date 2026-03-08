@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, trainerProcedure, protectedProcedure } from "../trpc";
-import { searchExercises } from "@/lib/exercisedb";
 
 export const trainingPlanRouter = router({
   list: trainerProcedure.query(({ ctx }) =>
@@ -205,47 +204,65 @@ export const trainingPlanRouter = router({
       });
     }),
 
-  searchExternalExercises: trainerProcedure
-    .input(z.object({ q: z.string(), limit: z.number().min(1).max(25).optional() }))
-    .query(async ({ input }) => {
-      return searchExercises(input.q, input.limit ?? 15, 0);
+  /** Vyhľadanie v našej DB cvikov (slovenské názvy). */
+  searchOurExercises: trainerProcedure
+    .input(z.object({ q: z.string(), limit: z.number().min(1).max(30).optional() }))
+    .query(({ ctx, input }) => {
+      const q = input.q.trim();
+      const limit = input.limit ?? 15;
+      if (!q) {
+        return ctx.prisma.exercise.findMany({
+          orderBy: { name: "asc" },
+          take: limit,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            equipment: true,
+            muscleGroups: true,
+            videoUrl: true,
+            externalId: true,
+          },
+        });
+      }
+      return ctx.prisma.exercise.findMany({
+        where: {
+          name: { contains: q, mode: "insensitive" },
+        },
+        orderBy: { name: "asc" },
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          equipment: true,
+          muscleGroups: true,
+          videoUrl: true,
+          externalId: true,
+        },
+      });
     }),
 
-  getOrCreateExerciseFromApi: trainerProcedure
+  /** Vytvorenie vlastného cviku (naša DB, slovenské texty). */
+  createCustomExercise: trainerProcedure
     .input(
       z.object({
-        exerciseId: z.string(),
-        name: z.string().min(1),
-        gifUrl: z.string().optional(),
-        targetMuscles: z.array(z.string()),
-        secondaryMuscles: z.array(z.string()).optional(),
-        equipments: z.array(z.string()).optional(),
-        instructions: z.array(z.string()).optional(),
+        name: z.string().min(1, "Názov je povinný"),
+        description: z.string().optional(),
+        muscleGroups: z.array(z.string()).default([]),
+        equipment: z.string().optional(),
+        videoUrl: z.string().url().optional().or(z.literal("")),
       })
     )
-    .mutation(async ({ ctx, input }) => {
-      const muscleGroups = [
-        ...input.targetMuscles,
-        ...(input.secondaryMuscles ?? []),
-      ].filter(Boolean);
-      const description =
-        input.instructions?.length ? input.instructions.join("\n") : null;
-      const equipment =
-        input.equipments?.length ? input.equipments.join(", ") : null;
-
-      const existing = await ctx.prisma.exercise.findFirst({
-        where: { externalId: input.exerciseId },
-      });
-      if (existing) return existing;
-
+    .mutation(({ ctx, input }) => {
       return ctx.prisma.exercise.create({
         data: {
-          externalId: input.exerciseId,
-          name: input.name,
-          description,
-          muscleGroups: muscleGroups.length ? muscleGroups : ["other"],
-          equipment,
-          videoUrl: input.gifUrl ?? null,
+          name: input.name.trim(),
+          description: input.description?.trim() || null,
+          muscleGroups: input.muscleGroups.length ? input.muscleGroups : ["other"],
+          equipment: input.equipment?.trim() || null,
+          videoUrl: (input.videoUrl && input.videoUrl !== "") ? input.videoUrl : null,
+          externalId: null,
         },
       });
     }),
@@ -344,4 +361,60 @@ export const trainingPlanRouter = router({
       },
     })
   ),
+
+  duplicate: trainerProcedure
+    .input(z.object({ trainingPlanId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const source = await ctx.prisma.trainingPlan.findFirst({
+        where: { id: input.trainingPlanId, trainerId: ctx.profile.id },
+        include: {
+          days: {
+            orderBy: { dayNumber: "asc" },
+            include: {
+              exercises: true,
+            },
+          },
+        },
+      });
+      if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
+      const newPlan = await ctx.prisma.trainingPlan.create({
+        data: {
+          trainerId: ctx.profile.id,
+          name: `${source.name} (kópia)`,
+          description: source.description,
+        },
+      });
+      for (const day of source.days) {
+        const newDay = await ctx.prisma.trainingPlanDay.create({
+          data: {
+            trainingPlanId: newPlan.id,
+            dayNumber: day.dayNumber,
+            name: day.name,
+            isRestDay: day.isRestDay,
+          },
+        });
+        for (const ex of day.exercises) {
+          await ctx.prisma.trainingPlanExercise.create({
+            data: {
+              trainingPlanDayId: newDay.id,
+              exerciseId: ex.exerciseId,
+              sets: ex.sets,
+              reps: ex.reps,
+              restSeconds: ex.restSeconds,
+              note: ex.note,
+              order: ex.order,
+            },
+          });
+        }
+      }
+      return ctx.prisma.trainingPlan.findUniqueOrThrow({
+        where: { id: newPlan.id },
+        include: {
+          days: {
+            orderBy: { dayNumber: "asc" },
+            include: { exercises: { orderBy: { order: "asc" }, include: { exercise: true } } },
+          },
+        },
+      });
+    }),
 });

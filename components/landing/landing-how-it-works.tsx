@@ -45,18 +45,32 @@ const steps = [
   },
 ];
 
+const HOW_CSS = `
+  @media (max-width: 767px) {
+    .landing-how-wrap { padding: 56px 0 !important; }
+    .landing-how-head { margin-bottom: 40px !important; }
+    .landing-how-step { grid-template-columns: 56px 1fr !important; gap: 20px !important; }
+    .landing-how-num { width: 44px !important; height: 44px !important; font-size: 11px !important; }
+    .landing-how-content { padding-bottom: 32px !important; }
+    .landing-how-content h3 { font-size: 18px !important; }
+    .landing-how-content p { font-size: 15px !important; }
+  }
+`;
+
 export function LandingHowItWorks() {
   const { ref, visible } = useVisible(0.1);
 
   return (
     <div
+      className="landing-how-wrap"
       style={{
         background: "transparent",
         padding: "100px 0",
       }}
     >
+      <style>{HOW_CSS}</style>
       <div style={{ maxWidth: "720px", margin: "0 auto", padding: "0 24px" }}>
-        <div style={{ textAlign: "center", marginBottom: "72px" }}>
+        <div className="landing-how-head" style={{ textAlign: "center", marginBottom: "72px" }}>
           <div
             style={{
               fontSize: "11px",
@@ -87,6 +101,7 @@ export function LandingHowItWorks() {
           {steps.map((step, i) => (
             <div
               key={step.num}
+              className="landing-how-step"
               style={{
                 display: "grid",
                 gridTemplateColumns: "72px 1fr",
@@ -105,6 +120,7 @@ export function LandingHowItWorks() {
                 }}
               >
                 <div
+                  className="landing-how-num"
                   style={{
                     width: "52px",
                     height: "52px",
@@ -145,6 +161,7 @@ export function LandingHowItWorks() {
 
               {/* Right: content */}
               <div
+                className="landing-how-content"
                 style={{
                   paddingBottom: i < steps.length - 1 ? "48px" : "0",
                   paddingTop: "10px",

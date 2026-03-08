@@ -48,7 +48,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
     return () => {
       mounted = false;
       scannerRef.current?.stop().catch(() => {});
-      scannerRef.current?.clear().catch(() => {});
+      scannerRef.current?.clear();
       scannerRef.current = null;
     };
   }, [onScan]);

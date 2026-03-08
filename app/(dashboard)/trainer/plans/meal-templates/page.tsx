@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { MealTemplatesList } from "@/components/trainer/meal-templates-list";
 import { ArrowLeft } from "lucide-react";
 
@@ -17,11 +18,12 @@ export default async function MealTemplatesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/trainer/plans/meal">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+        <Link
+          href="/trainer/plans/meal"
+          className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Zoznam jedál</h1>
           <p className="text-muted-foreground">

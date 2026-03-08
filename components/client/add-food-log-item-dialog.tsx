@@ -19,9 +19,10 @@ import { BarcodeScanner } from "@/components/trainer/barcode-scanner";
 
 const MEAL_OPTIONS = [
   { value: "breakfast" as const, label: "Raňajky" },
+  { value: "desiata" as const, label: "Desiata" },
   { value: "lunch" as const, label: "Obed" },
+  { value: "olovrant" as const, label: "Olovrant" },
   { value: "dinner" as const, label: "Večera" },
-  { value: "snack" as const, label: "Presnívka" },
 ];
 
 type Tab = "search" | "simple" | "create";
@@ -39,11 +40,15 @@ function macrosForAmount(
   };
 }
 
+type MealTypeValue = "breakfast" | "desiata" | "lunch" | "olovrant" | "dinner";
+
 interface AddFoodLogItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   date: string; // YYYY-MM-DD
   onSuccess: () => void;
+  /** Predvyplnený typ jedla pri otvorení (napr. z karty Obed) */
+  defaultMealType?: MealTypeValue;
 }
 
 export function AddFoodLogItemDialog({
@@ -51,6 +56,7 @@ export function AddFoodLogItemDialog({
   onOpenChange,
   date,
   onSuccess,
+  defaultMealType,
 }: AddFoodLogItemDialogProps) {
   const [tab, setTab] = useState<Tab>("search");
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +66,11 @@ export function AddFoodLogItemDialog({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedFoodId, setSelectedFoodId] = useState<string | null>(null);
   const [amount, setAmount] = useState("100");
-  const [mealType, setMealType] = useState<"breakfast" | "lunch" | "dinner" | "snack">("lunch");
+  const [mealType, setMealType] = useState<MealTypeValue>(defaultMealType ?? "lunch");
+
+  useEffect(() => {
+    if (open && defaultMealType) setMealType(defaultMealType);
+  }, [open, defaultMealType]);
 
   // Simple tab
   const [simpleName, setSimpleName] = useState("");

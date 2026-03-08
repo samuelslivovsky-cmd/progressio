@@ -20,6 +20,16 @@ export const mealTemplateRouter = router({
       })
     ),
 
+  update: trainerProcedure
+    .input(z.object({ id: z.string(), name: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.mealTemplate.updateMany({
+        where: { id: input.id, trainerId: ctx.profile.id },
+        data: { name: input.name.trim() },
+      });
+      return ctx.prisma.mealTemplate.findUniqueOrThrow({ where: { id: input.id } });
+    }),
+
   addItem: trainerProcedure
     .input(
       z.object({

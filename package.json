@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "import-exercises": "node prisma/import-exercises-from-api.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -25,6 +26,7 @@
     "date-fns": "^4.1.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.577.0",
+    "motion": "^12.35.1",
     "next": "16.1.6",
     "pg": "^8.20.0",
     "react": "19.2.3",

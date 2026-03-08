@@ -10,12 +10,13 @@ import Link from "next/link";
 
 const MEAL_LABELS: Record<string, string> = {
   breakfast: "Raňajky",
+  desiata: "Desiata",
   lunch: "Obed",
+  olovrant: "Olovrant",
   dinner: "Večera",
-  snack: "Presnívka",
 };
 
-const MEAL_ORDER = ["breakfast", "lunch", "dinner", "snack"] as const;
+const MEAL_ORDER = ["breakfast", "desiata", "lunch", "olovrant", "dinner"] as const;
 
 type Food = {
   id: string;

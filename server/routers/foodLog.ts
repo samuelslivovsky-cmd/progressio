@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure, trainerProcedure } from "../trpc";
 
-const mealTypeEnum = z.enum(["breakfast", "lunch", "dinner", "snack"]);
+const mealTypeEnum = z.enum(["breakfast", "desiata", "lunch", "olovrant", "dinner"]);
 
 export const foodLogRouter = router({
   byDate: protectedProcedure
@@ -17,6 +17,22 @@ export const foodLogRouter = router({
         },
       })
     ),
+
+  /** Tréner: zoznam potravy klienta (posledné záznamy, read-only). */
+  listForClient: trainerProcedure
+    .input(z.object({ clientId: z.string(), limit: z.number().min(1).max(60).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const link = await ctx.prisma.clientTrainer.findFirst({
+        where: { trainerId: ctx.profile.id, clientId: input.clientId },
+      });
+      if (!link) return [];
+      return ctx.prisma.foodLog.findMany({
+        where: { profileId: input.clientId },
+        orderBy: { date: "desc" },
+        take: input.limit,
+        include: { items: { include: { food: true } } },
+      });
+    }),
 
   /** Trenér: záznam stravy klienta podľa dátumu (iba pre svojich klientov). */
   byDateForClient: trainerProcedure

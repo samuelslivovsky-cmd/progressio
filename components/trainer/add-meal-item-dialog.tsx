@@ -121,7 +121,7 @@ export function AddMealItemDialog({
     onError: (e) => setError(e.message),
   });
 
-  const selectedFood = selectedFoodId ? foods.find((f) => f.id === selectedFoodId) : null;
+  const selectedFood = selectedFoodId ? foods.find((f: FoodForItem) => f.id === selectedFoodId) : null;
 
   function macrosForAmount(
     food: { calories: number; protein: number; carbs: number; fat: number; servingSize: number },
@@ -421,7 +421,7 @@ export function AddMealItemDialog({
                 </div>
                 {foods.length > 0 && !selectedFoodId && (
                   <ul className="border rounded-md max-h-48 overflow-auto divide-y">
-                    {foods.map((f) => (
+                    {foods.map((f: FoodForItem) => (
                       <li key={f.id}>
                         <button
                           type="button"
