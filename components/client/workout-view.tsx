@@ -64,6 +64,10 @@ export function WorkoutView() {
   const [durationMin, setDurationMin] = useState<number | "">("");
   const [restTimer, setRestTimer] = useState<RestTimerState | null>(null);
   const restIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /** Čas začiatku tréningu – pri "Začať tréning" sa spustí, pri "Dokončiť" sa zapíše trvanie. */
+  const [workoutStartedAt, setWorkoutStartedAt] = useState<Date | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const workoutTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!restTimer || restTimer.secondsLeft <= 0) {
@@ -88,6 +92,27 @@ export function WorkoutView() {
     };
   }, [restTimer?.secondsLeft]);
 
+  // Stopky tréningu: každú sekundu aktualizujeme elapsedSeconds
+  useEffect(() => {
+    if (!sessionDay || !workoutStartedAt) {
+      if (workoutTickRef.current) {
+        clearInterval(workoutTickRef.current);
+        workoutTickRef.current = null;
+      }
+      return;
+    }
+    const updateElapsed = () =>
+      setElapsedSeconds(Math.floor((Date.now() - workoutStartedAt.getTime()) / 1000));
+    updateElapsed();
+    workoutTickRef.current = setInterval(updateElapsed, 1000);
+    return () => {
+      if (workoutTickRef.current) {
+        clearInterval(workoutTickRef.current);
+        workoutTickRef.current = null;
+      }
+    };
+  }, [sessionDay, workoutStartedAt]);
+
   const today = format(new Date(), "yyyy-MM-dd");
   const utils = trpc.useUtils();
   const { data: assignments = [], isLoading } = trpc.trainingPlan.myAssigned.useQuery();
@@ -101,6 +126,8 @@ export function WorkoutView() {
       setSessionDay(null);
       setSetValues({});
       setDurationMin("");
+      setWorkoutStartedAt(null);
+      setElapsedSeconds(0);
       toast.success("Tréning uložený.");
     },
     onError: (e) => toast.error(e.message),
@@ -145,10 +172,14 @@ export function WorkoutView() {
       });
       return { exerciseId: pe.exerciseId, sets };
     });
+    // Trvanie z stopiek (zaokrúhlené na minúty), alebo manuálne zadané
+    const durationFromTimer =
+      workoutStartedAt != null ? Math.max(1, Math.round(elapsedSeconds / 60)) : undefined;
+    const finalDurationMin = durationMin !== "" ? Number(durationMin) : durationFromTimer;
     completeMutation.mutate({
       date,
       name: sessionDay.name ?? `Deň ${sessionDay.dayNumber}`,
-      durationMin: durationMin === "" ? undefined : Number(durationMin),
+      durationMin: finalDurationMin,
       items,
     });
   };
@@ -191,6 +222,26 @@ export function WorkoutView() {
     setRestTimer({ secondsLeft: seconds, totalSeconds: seconds, label });
   };
 
+  const startSession = (day: PlanDay) => {
+    setSessionDay(day);
+    setWorkoutStartedAt(new Date());
+    setElapsedSeconds(0);
+  };
+
+  const exitSession = () => {
+    setSessionDay(null);
+    setSetValues({});
+    setRestTimer(null);
+    setWorkoutStartedAt(null);
+    setElapsedSeconds(0);
+  };
+
+  const formatElapsed = (totalSeconds: number) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   if (sessionDay) {
     return (
       <div className="space-y-6">
@@ -225,21 +276,19 @@ export function WorkoutView() {
           </Card>
         )}
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setSessionDay(null);
-              setSetValues({});
-              setRestTimer(null);
-            }}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-lg font-semibold">
-            {sessionDay.name ? capitalizeWords(sessionDay.name) : `Deň ${sessionDay.dayNumber}`}
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={exitSession}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-lg font-semibold">
+              {sessionDay.name ? capitalizeWords(sessionDay.name) : `Deň ${sessionDay.dayNumber}`}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2 font-mono text-lg tabular-nums text-primary">
+            <Timer className="h-5 w-5" />
+            <span>{formatElapsed(elapsedSeconds)}</span>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -313,12 +362,13 @@ export function WorkoutView() {
 
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <Label htmlFor="duration">Trvanie (min)</Label>
+            <Label htmlFor="duration">Trvanie (min) – voliteľná úprava</Label>
             <Input
               id="duration"
               type="number"
               min={0}
               className="w-20"
+              placeholder={String(Math.round(elapsedSeconds / 60))}
               value={durationMin}
               onChange={(e) =>
                 setDurationMin(e.target.value === "" ? "" : Number(e.target.value))
@@ -330,7 +380,7 @@ export function WorkoutView() {
             disabled={completeMutation.isPending}
           >
             <Check className="h-4 w-4 mr-2" />
-            Dokončiť tréning
+            Ukončiť tréning
           </Button>
         </div>
       </div>
@@ -369,7 +419,7 @@ export function WorkoutView() {
                       <CardTitle className="text-base">
                         {day.name ? capitalizeWords(day.name) : `Deň ${day.dayNumber}`}
                       </CardTitle>
-                      <Button size="sm" onClick={() => setSessionDay(day)}>
+                      <Button size="sm" onClick={() => startSession(day)}>
                         <Play className="h-4 w-4 mr-1" />
                         Začať tréning
                       </Button>
@@ -428,7 +478,7 @@ export function WorkoutView() {
                             <CardTitle className="text-base">
                               {day.name ? capitalizeWords(day.name) : `Deň ${day.dayNumber}`}
                             </CardTitle>
-                            <Button size="sm" onClick={() => setSessionDay(day)}>
+                            <Button size="sm" onClick={() => startSession(day)}>
                               <Play className="h-4 w-4 mr-1" />
                               Začať tréning
                             </Button>

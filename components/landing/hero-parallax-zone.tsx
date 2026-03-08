@@ -11,20 +11,22 @@ import { HeroBackground } from "./hero-background";
 const TOTAL_VH = 5;
 const TRAIL_VH = 0.3; // extra viewport heights appended after storytelling ends, preventing next section from bleeding in
 const MOCKUP_BASE_WIDTH = 520;
+const MOCKUP_MOBILE_WIDTH = 280;
 
 function clamp(x: number, a = 0, b = 1) { return Math.min(b, Math.max(a, x)); }
 function seg(p: number, a: number, b: number) { return clamp((p - a) / (b - a)); }
 
-// ── Scroll phases (scrollable = 4*vh) — storytelling kratší na PC aj mobile ─
+// ── Scroll phases (scrollable = 4*vh) — storytelling podľa zariadenia ─
+// Desktop & phone: hero → client → AI → trainer (na mobile majú mockupy mobilný dizajn). Tablet: hero → client → trainer.
 // 0.00 – 0.05  hero idle
 // 0.05 – 0.12  hero text fades out
 // 0.08 – 0.20  cards merge
 // 0.18 – 0.28  client slides in
-// 0.28 – 0.36  client pinned
-// 0.36 – 0.44  client↔AI simultaneous crossfade
-// 0.44 – 0.52  AI pinned
-// 0.52 – 0.62  AI↔trainer simultaneous crossfade
-// 0.62 – 1.00  trainer pinned
+// 0.28 – 0.36  client pinned (tablet: client out, trainer in)
+// 0.36 – 0.44  desktop: client↔AI crossfade | tablet: trainer pinned
+// 0.44 – 0.52  desktop: AI pinned | phone: AI pinned do 1.0
+// 0.52 – 0.62  desktop: AI↔trainer crossfade
+// 0.62 – 1.00  desktop: trainer pinned
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HERO_CSS = `
@@ -92,6 +94,22 @@ const shellPurple: React.CSSProperties = {
   boxShadow: "0 32px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(167,139,250,0.08), inset 0 1px 0 rgba(255,255,255,0.04)",
 };
 
+const shellMobile: React.CSSProperties = {
+  ...shell,
+  maxWidth: `${MOCKUP_MOBILE_WIDTH}px`,
+  borderRadius: "28px",
+  padding: "12px 14px 18px",
+  boxShadow: "0 24px 56px rgba(0,0,0,0.7), 0 0 0 1px rgba(34,197,94,0.1), inset 0 1px 0 rgba(255,255,255,0.03)",
+};
+
+const shellMobilePurple: React.CSSProperties = {
+  ...shellPurple,
+  maxWidth: `${MOCKUP_MOBILE_WIDTH}px`,
+  borderRadius: "28px",
+  padding: "12px 14px 18px",
+  boxShadow: "0 24px 56px rgba(0,0,0,0.7), 0 0 0 1px rgba(167,139,250,0.1), inset 0 1px 0 rgba(255,255,255,0.03)",
+};
+
 const tile: React.CSSProperties = {
   background: "rgba(255,255,255,0.04)",
   border: "1px solid rgba(34,197,94,0.09)",
@@ -112,111 +130,187 @@ function Lbl({ children, purple }: { children: React.ReactNode; purple?: boolean
   );
 }
 
-function ClientMockup() {
+function ClientMockup({ mobile = false }: { mobile?: boolean }) {
   const pts: [number, number][] = [[0,9],[14,13],[28,11],[42,17],[56,21],[70,25],[84,31],[99,38]];
   const line = `M${pts.map(([x,y]) => `${x},${y}`).join(" L")}`;
   const area = `${line} L99,48 L0,48 Z`;
   const r = 22, circ = 2 * Math.PI * r;
+  const shellStyle = mobile ? shellMobile : shell;
+
   return (
-    <div style={shell}>
-      <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "18px" }}>Dashboard — Klient</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "12px" }}>
-        {[
-          { label: "Váha",    value: "73.4 kg",    accent: false },
-          { label: "Kalórie", value: "1 840 kcal", accent: false },
-          { label: "Séria",   value: "14 dní",     accent: true  },
-          { label: "Tréning", value: "Hotový ✓",   accent: true  },
-        ].map(({ label, value, accent }) => (
-          <div key={label} style={tile}>
-            <Lbl>{label}</Lbl>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ ...tile, marginBottom: "10px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-          <Lbl>Váha — 30 dní</Lbl>
-          <span style={{ fontSize: "10px", background: "rgba(34,197,94,0.12)", color: "#4ade80", padding: "2px 8px", borderRadius: "20px", border: "1px solid rgba(34,197,94,0.22)", fontWeight: 600 }}>↓ −2.1 kg</span>
+    <div style={shellStyle}>
+      {mobile && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+          <div style={{ width: "52px", height: "5px", background: "rgba(255,255,255,0.1)", borderRadius: "3px" }} />
         </div>
-        <svg viewBox="0 0 99 48" width="100%" height="44">
-          <defs>
-            <linearGradient id="hpz-wg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path d={area} fill="url(#hpz-wg)" />
-          <path d={line} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 4px rgba(34,197,94,0.5))" }} />
-          <circle cx="99" cy="38" r="3" fill="#22c55e" style={{ filter: "drop-shadow(0 0 5px #22c55e)" }} />
-        </svg>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-        <div style={{ ...tile, display: "flex", alignItems: "center", gap: "10px" }}>
-          <svg width="48" height="48" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
-            <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
-            <circle cx="26" cy="26" r={r} fill="none" stroke="#22c55e" strokeWidth="5"
-              strokeDasharray={`${circ * 0.84} ${circ}`} strokeLinecap="round" transform="rotate(-90 26 26)"
-              style={{ filter: "drop-shadow(0 0 5px rgba(34,197,94,0.6))" }} />
-            <text x="26" y="30" textAnchor="middle" fill="white" fontSize="10" fontWeight="700">84%</text>
-          </svg>
-          <div>
-            <Lbl>Kalórie</Lbl>
-            <div style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>1 840</div>
-            <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)" }}>/ 2 200 kcal</div>
-          </div>
-        </div>
-        <div style={tile}>
-          <Lbl>Dnešný tréning</Lbl>
-          {[{ name: "Bench Press", done: 3, total: 4 }, { name: "Squat", done: 4, total: 4 }, { name: "Pull-ups", done: 2, total: 3 }].map((ex, i) => (
-            <div key={i} style={{ marginBottom: "6px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.65)" }}>{ex.name}</span>
-                <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.35)" }}>{ex.done}/{ex.total}</span>
+      )}
+      <div style={{ fontSize: mobile ? "9px" : "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: mobile ? "10px" : "18px" }}>Dashboard — Klient</div>
+      {mobile ? (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "10px" }}>
+            {[
+              { label: "Váha",    value: "73.4 kg",    accent: false },
+              { label: "Kalórie", value: "1 840",      accent: false },
+              { label: "Séria",   value: "14 dní",     accent: true  },
+              { label: "Tréning", value: "Hotový ✓",   accent: true  },
+            ].map(({ label, value, accent }) => (
+              <div key={label} style={{ ...tile, padding: "8px" }}>
+                <Lbl>{label}</Lbl>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div>
               </div>
-              <div style={{ height: "3px", background: "rgba(255,255,255,0.06)", borderRadius: "2px" }}>
-                <div style={{ height: "100%", width: `${ex.done / ex.total * 100}%`, background: ex.done === ex.total ? "#22c55e" : "#4ade80", borderRadius: "2px" }} />
+            ))}
+          </div>
+          <div style={{ ...tile, marginBottom: "8px", padding: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <Lbl>Váha — 30 dní</Lbl>
+              <span style={{ fontSize: "8px", background: "rgba(34,197,94,0.12)", color: "#4ade80", padding: "2px 6px", borderRadius: "12px", fontWeight: 600 }}>↓ −2.1 kg</span>
+            </div>
+            <svg viewBox="0 0 99 48" width="100%" height="36">
+              <defs>
+                <linearGradient id="hpz-wg-m" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d={area} fill="url(#hpz-wg-m)" />
+              <path d={line} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="99" cy="38" r="2.5" fill="#22c55e" />
+            </svg>
+          </div>
+          <div style={{ ...tile, display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", padding: "8px" }}>
+            <svg width="36" height="36" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
+              <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+              <circle cx="26" cy="26" r={r} fill="none" stroke="#22c55e" strokeWidth="5"
+                strokeDasharray={`${circ * 0.84} ${circ}`} strokeLinecap="round" transform="rotate(-90 26 26)" />
+              <text x="26" y="30" textAnchor="middle" fill="white" fontSize="8" fontWeight="700">84%</text>
+            </svg>
+            <div>
+              <Lbl>Kalórie</Lbl>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>1 840 / 2 200 kcal</div>
+            </div>
+          </div>
+          <div style={tile}>
+            <Lbl>Dnešný tréning</Lbl>
+            {[{ name: "Bench Press", done: 3, total: 4 }, { name: "Squat", done: 4, total: 4 }, { name: "Pull-ups", done: 2, total: 3 }].map((ex, i) => (
+              <div key={i} style={{ marginBottom: "5px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                  <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.65)" }}>{ex.name}</span>
+                  <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.35)" }}>{ex.done}/{ex.total}</span>
+                </div>
+                <div style={{ height: "2px", background: "rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+                  <div style={{ height: "100%", width: `${ex.done / ex.total * 100}%`, background: ex.done === ex.total ? "#22c55e" : "#4ade80", borderRadius: "2px" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "12px" }}>
+            {[
+              { label: "Váha",    value: "73.4 kg",    accent: false },
+              { label: "Kalórie", value: "1 840 kcal", accent: false },
+              { label: "Séria",   value: "14 dní",     accent: true  },
+              { label: "Tréning", value: "Hotový ✓",   accent: true  },
+            ].map(({ label, value, accent }) => (
+              <div key={label} style={tile}>
+                <Lbl>{label}</Lbl>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ ...tile, marginBottom: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <Lbl>Váha — 30 dní</Lbl>
+              <span style={{ fontSize: "10px", background: "rgba(34,197,94,0.12)", color: "#4ade80", padding: "2px 8px", borderRadius: "20px", border: "1px solid rgba(34,197,94,0.22)", fontWeight: 600 }}>↓ −2.1 kg</span>
+            </div>
+            <svg viewBox="0 0 99 48" width="100%" height="44">
+              <defs>
+                <linearGradient id="hpz-wg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#22c55e" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d={area} fill="url(#hpz-wg)" />
+              <path d={line} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 4px rgba(34,197,94,0.5))" }} />
+              <circle cx="99" cy="38" r="3" fill="#22c55e" style={{ filter: "drop-shadow(0 0 5px #22c55e)" }} />
+            </svg>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            <div style={{ ...tile, display: "flex", alignItems: "center", gap: "10px" }}>
+              <svg width="48" height="48" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
+                <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+                <circle cx="26" cy="26" r={r} fill="none" stroke="#22c55e" strokeWidth="5"
+                  strokeDasharray={`${circ * 0.84} ${circ}`} strokeLinecap="round" transform="rotate(-90 26 26)"
+                  style={{ filter: "drop-shadow(0 0 5px rgba(34,197,94,0.6))" }} />
+                <text x="26" y="30" textAnchor="middle" fill="white" fontSize="10" fontWeight="700">84%</text>
+              </svg>
+              <div>
+                <Lbl>Kalórie</Lbl>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>1 840</div>
+                <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)" }}>/ 2 200 kcal</div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+            <div style={tile}>
+              <Lbl>Dnešný tréning</Lbl>
+              {[{ name: "Bench Press", done: 3, total: 4 }, { name: "Squat", done: 4, total: 4 }, { name: "Pull-ups", done: 2, total: 3 }].map((ex, i) => (
+                <div key={i} style={{ marginBottom: "6px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+                    <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.65)" }}>{ex.name}</span>
+                    <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.35)" }}>{ex.done}/{ex.total}</span>
+                  </div>
+                  <div style={{ height: "3px", background: "rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+                    <div style={{ height: "100%", width: `${ex.done / ex.total * 100}%`, background: ex.done === ex.total ? "#22c55e" : "#4ade80", borderRadius: "2px" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function AiMockup() {
+function AiMockup({ mobile = false }: { mobile?: boolean }) {
+  const shellStyle = mobile ? shellMobilePurple : shellPurple;
   return (
-    <div style={shellPurple}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Dashboard — Klient AI</div>
-        <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.22)", borderRadius: "20px", padding: "3px 10px" }}>
-          <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 6px rgba(167,139,250,0.9)", animation: "hpz-live-dot 2s ease-in-out infinite" }} />
-          <span style={{ fontSize: "10px", color: "#c4b5fd", fontWeight: 600 }}>AI aktívny</span>
+    <div style={shellStyle}>
+      {mobile && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+          <div style={{ width: "52px", height: "5px", background: "rgba(255,255,255,0.1)", borderRadius: "3px" }} />
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: mobile ? "10px" : "16px", flexWrap: "wrap", gap: "6px" }}>
+        <div style={{ fontSize: mobile ? "9px" : "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Dashboard — Klient AI</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.22)", borderRadius: "20px", padding: "3px 8px" }}>
+          <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 6px rgba(167,139,250,0.9)", animation: "hpz-live-dot 2s ease-in-out infinite" }} />
+          <span style={{ fontSize: mobile ? "8px" : "10px", color: "#c4b5fd", fontWeight: 600 }}>AI aktívny</span>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "8px", marginBottom: "12px" }}>
-        {[{ label: "TDEE", value: "2 420 kcal" }, { label: "Plató", value: "nie" }, { label: "Séria", value: "14 dní" }].map(({ label, value }) => (
-          <div key={label} style={tilePurple}><Lbl purple>{label}</Lbl><div style={{ fontSize: "13px", fontWeight: 700, color: "#fff" }}>{value}</div></div>
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(3,1fr)" : "repeat(3,1fr)", gap: mobile ? "6px" : "8px", marginBottom: mobile ? "10px" : "12px" }}>
+        {[{ label: "TDEE", value: "2 420" }, { label: "Plató", value: "nie" }, { label: "Séria", value: "14 dní" }].map(({ label, value }) => (
+          <div key={label} style={{ ...tilePurple, padding: mobile ? "6px" : undefined }}><Lbl purple>{label}</Lbl><div style={{ fontSize: mobile ? "10px" : "13px", fontWeight: 700, color: "#fff" }}>{value}</div></div>
         ))}
       </div>
-      <div style={tilePurple}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
-          <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 6px rgba(167,139,250,0.8)" }} />
-          <span style={{ fontSize: "10px", fontWeight: 600, color: "rgba(167,139,250,0.7)", textTransform: "uppercase", letterSpacing: "0.1em" }}>AI Koučing</span>
+      <div style={{ ...tilePurple, padding: mobile ? "10px" : undefined }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: mobile ? "8px" : "12px" }}>
+          <div style={{ width: mobile ? "4px" : "5px", height: mobile ? "4px" : "5px", borderRadius: "50%", background: "#a78bfa", boxShadow: "0 0 6px rgba(167,139,250,0.8)" }} />
+          <span style={{ fontSize: mobile ? "8px" : "10px", fontWeight: 600, color: "rgba(167,139,250,0.7)", textTransform: "uppercase", letterSpacing: "0.1em" }}>AI Koučing</span>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "9px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? "6px" : "9px" }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <div style={{ maxWidth: "85%", padding: "8px 11px", borderRadius: "12px 12px 2px 12px", background: "rgba(167,139,250,0.13)", border: "1px solid rgba(167,139,250,0.22)", fontSize: "10.5px", color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
+            <div style={{ maxWidth: "85%", padding: mobile ? "6px 9px" : "8px 11px", borderRadius: "12px 12px 2px 12px", background: "rgba(167,139,250,0.13)", border: "1px solid rgba(167,139,250,0.22)", fontSize: mobile ? "9px" : "10.5px", color: "rgba(255,255,255,0.8)", lineHeight: 1.5 }}>
               Bolí ma chrbát, mám dnes cvičiť?
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ maxWidth: "90%", padding: "8px 11px", borderRadius: "12px 12px 12px 2px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", fontSize: "10.5px", color: "rgba(255,255,255,0.75)", lineHeight: 1.55 }}>
-              Na základe tvojich dát — 7 000+ krokov denne a 14-dňová séria. Cvič, ale nahraď deadlift plankom a RDL.
+            <div style={{ maxWidth: "90%", padding: mobile ? "6px 9px" : "8px 11px", borderRadius: "12px 12px 12px 2px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", fontSize: mobile ? "9px" : "10.5px", color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>
+              Na základe tvojich dát — cvič, nahraď deadlift plankom a RDL.
             </div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ padding: "8px 14px", borderRadius: "12px 12px 12px 2px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: "5px", alignItems: "center" }}>
+            <div style={{ padding: mobile ? "6px 10px" : "8px 14px", borderRadius: "12px 12px 12px 2px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: "5px", alignItems: "center" }}>
               {[0, 1, 2].map(j => (
                 <div key={j} style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#a78bfa", animation: "hpz-typing 1.4s ease-in-out infinite", animationDelay: `${j * 0.18}s` }} />
               ))}
@@ -228,7 +322,7 @@ function AiMockup() {
   );
 }
 
-function TrainerMockup() {
+function TrainerMockup({ mobile = false }: { mobile?: boolean }) {
   const clients = [
     { name: "Mirka V.",  active: true,  ago: "dnes",  risk: null },
     { name: "Adam T.",   active: true,  ago: "dnes",  risk: null },
@@ -240,57 +334,63 @@ function TrainerMockup() {
     { msg: "Adam dokončil tréning",   color: "#22c55e", warn: false },
     { msg: "Jana K. — plató 3 týždne", color: "#f59e0b", warn: true  },
   ];
+  const shellStyle = mobile ? shellMobile : shell;
   return (
-    <div style={shell}>
-      <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "18px" }}>Dashboard — Tréner</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "8px", marginBottom: "12px" }}>
+    <div style={shellStyle}>
+      {mobile && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
+          <div style={{ width: "52px", height: "5px", background: "rgba(255,255,255,0.1)", borderRadius: "3px" }} />
+        </div>
+      )}
+      <div style={{ fontSize: mobile ? "9px" : "11px", fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: mobile ? "10px" : "18px" }}>Dashboard — Tréner</div>
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4,1fr)", gap: mobile ? "6px" : "8px", marginBottom: mobile ? "10px" : "12px" }}>
         {[
           { label: "Klienti",    value: "12", accent: false },
           { label: "Plány",      value: "8",  accent: false },
           { label: "Jedálničky", value: "5",  accent: false },
           { label: "Aktívni",    value: "7",  accent: true  },
         ].map(({ label, value, accent }) => (
-          <div key={label} style={tile}><Lbl>{label}</Lbl><div style={{ fontSize: "22px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div></div>
+          <div key={label} style={{ ...tile, padding: mobile ? "8px" : undefined }}><Lbl>{label}</Lbl><div style={{ fontSize: mobile ? "16px" : "22px", fontWeight: 700, color: accent ? "#22c55e" : "#fff" }}>{value}</div></div>
         ))}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? "8px" : "8px" }}>
         <div style={tile}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: mobile ? "8px" : "10px" }}>
             <Lbl>Klienti</Lbl>
-            <span style={{ fontSize: "10px", color: "#4ade80", fontWeight: 700 }}>12 aktívnych</span>
+            <span style={{ fontSize: mobile ? "8px" : "10px", color: "#4ade80", fontWeight: 700 }}>12 aktívnych</span>
           </div>
           {clients.map((c, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "7px" }}>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: mobile ? "5px" : "7px" }}>
               <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: c.active ? "#22c55e" : (c.risk === "riziko" ? "#ef4444" : "rgba(255,255,255,0.2)"), boxShadow: c.active ? "0 0 5px #22c55e" : "none", flexShrink: 0 }} />
-              <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.7)", flex: 1 }}>{c.name}</span>
+              <span style={{ fontSize: mobile ? "10px" : "11px", color: "rgba(255,255,255,0.7)", flex: 1 }}>{c.name}</span>
               {c.risk ? (
-                <span style={{ fontSize: "9px", color: c.risk === "riziko" ? "#f87171" : "#f59e0b", background: c.risk === "riziko" ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", borderRadius: "4px", padding: "1px 5px", fontWeight: 600 }}>{c.risk}</span>
+                <span style={{ fontSize: "8px", color: c.risk === "riziko" ? "#f87171" : "#f59e0b", background: c.risk === "riziko" ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", borderRadius: "4px", padding: "1px 4px", fontWeight: 600 }}>{c.risk}</span>
               ) : (
-                <span style={{ fontSize: "10px", color: c.active ? "rgba(74,222,128,0.7)" : "rgba(255,255,255,0.25)" }}>{c.ago}</span>
+                <span style={{ fontSize: mobile ? "9px" : "10px", color: c.active ? "rgba(74,222,128,0.7)" : "rgba(255,255,255,0.25)" }}>{c.ago}</span>
               )}
             </div>
           ))}
-          <div style={{ paddingTop: "7px", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: "10px", color: "rgba(255,255,255,0.3)" }}>+ 8 ďalších</div>
+          <div style={{ paddingTop: "5px", borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: mobile ? "9px" : "10px", color: "rgba(255,255,255,0.3)" }}>+ 8 ďalších</div>
         </div>
         <div style={tile}>
           <Lbl>Priradený plán</Lbl>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#fff", marginBottom: "3px" }}>Silový cyklus A</div>
-          <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)", marginBottom: "12px" }}>8 klientov · 4 týždne</div>
-          <div style={{ display: "flex", gap: "4px", marginBottom: "8px" }}>
+          <div style={{ fontSize: mobile ? "11px" : "13px", fontWeight: 700, color: "#fff", marginBottom: "3px" }}>Silový cyklus A</div>
+          <div style={{ fontSize: mobile ? "9px" : "10px", color: "rgba(255,255,255,0.35)", marginBottom: mobile ? "8px" : "12px" }}>8 klientov · 4 týždne</div>
+          <div style={{ display: "flex", gap: "4px", marginBottom: mobile ? "6px" : "8px" }}>
             {[{ l: "T1", d: true }, { l: "T2", d: true }, { l: "T3", d: false }, { l: "T4", d: false }].map(({ l, d }, i) => (
               <div key={i} style={{ flex: 1 }}>
-                <div style={{ height: "20px", borderRadius: "4px", background: d ? "#22c55e" : "rgba(255,255,255,0.06)", boxShadow: d ? "0 0 6px rgba(34,197,94,0.4)" : "none", marginBottom: "3px" }} />
+                <div style={{ height: mobile ? "14px" : "20px", borderRadius: "4px", background: d ? "#22c55e" : "rgba(255,255,255,0.06)", boxShadow: d ? "0 0 6px rgba(34,197,94,0.4)" : "none", marginBottom: "3px" }} />
                 <div style={{ textAlign: "center", fontSize: "8px", color: d ? "rgba(74,222,128,0.8)" : "rgba(255,255,255,0.25)", fontWeight: 600 }}>{l}</div>
               </div>
             ))}
           </div>
-          <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.3)", marginBottom: "10px" }}>
+          <div style={{ fontSize: mobile ? "9px" : "10px", color: "rgba(255,255,255,0.3)", marginBottom: mobile ? "8px" : "10px" }}>
             Týždeň <span style={{ color: "#4ade80", fontWeight: 600 }}>2</span> / 4
           </div>
-          <div style={{ paddingTop: "8px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ paddingTop: mobile ? "6px" : "8px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <Lbl>Živá aktivita</Lbl>
             {activity.map((a, i) => (
-              <div key={i} style={{ fontSize: "10px", color: a.warn ? "rgba(245,158,11,0.85)" : "rgba(255,255,255,0.4)", display: "flex", gap: "5px", alignItems: "center", marginBottom: "4px" }}>
+              <div key={i} style={{ fontSize: mobile ? "9px" : "10px", color: a.warn ? "rgba(245,158,11,0.85)" : "rgba(255,255,255,0.4)", display: "flex", gap: "5px", alignItems: "center", marginBottom: "3px" }}>
                 <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: a.color, flexShrink: 0 }} />
                 {a.msg}
               </div>
@@ -394,13 +494,29 @@ function FloatingBadge({ text, sub, phaseIn, position, accent = "green", isMobil
   );
 }
 
-function PhaseDots({ progress, isMobile }: { progress: number; isMobile: boolean }) {
-  const phases = [
+function PhaseDots({
+  progress,
+  isMobile,
+  isPhone,
+  isTablet,
+}: {
+  progress: number;
+  isMobile: boolean;
+  isPhone: boolean;
+  isTablet: boolean;
+}) {
+  const phasesDesktop = [
     { label: "Úvod",    range: [0,    0.18] as [number, number] },
     { label: "Klient",  range: [0.18, 0.44] as [number, number] },
     { label: "AI Kouč", range: [0.44, 0.62] as [number, number] },
     { label: "Tréner",  range: [0.62, 1.01] as [number, number] },
   ];
+  const phasesTablet = [
+    { label: "Úvod",   range: [0,    0.18] as [number, number] },
+    { label: "Klient", range: [0.18, 0.36] as [number, number] },
+    { label: "Tréner", range: [0.36, 1.01] as [number, number] },
+  ];
+  const phases = isTablet ? phasesTablet : phasesDesktop;
   const activeIdx = phases.findIndex(({ range }) => progress >= range[0] && progress < range[1]);
   const effectiveIdx = activeIdx === -1 ? phases.length - 1 : activeIdx;
   const visible = !isMobile && progress > 0.05 && progress < 0.995;
@@ -409,7 +525,7 @@ function PhaseDots({ progress, isMobile }: { progress: number; isMobile: boolean
     <div style={{ position: "absolute", right: "28px", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: "12px", opacity: visible ? 1 : 0, transition: "opacity 0.5s ease", zIndex: 30, pointerEvents: "none" }}>
       {phases.map((p, i) => {
         const isActive = i === effectiveIdx;
-        const isAi = i === 2;
+        const isAi = p.label === "AI Kouč";
         const dotColor = isActive ? (isAi ? "#a78bfa" : "#22c55e") : "rgba(255,255,255,0.15)";
         return (
           <div key={p.label} style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "flex-end" }}>
@@ -452,10 +568,11 @@ function MockupWrap({ children, isMobile, windowWidth }: { children: React.React
   if (!isMobile) {
     return <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>{children}</div>;
   }
-  const scale = Math.min(1, (windowWidth - 40) / MOCKUP_BASE_WIDTH);
+  const mockupWidth = MOCKUP_MOBILE_WIDTH;
+  const scale = Math.min(1.2, (windowWidth - 32) / mockupWidth);
   return (
     <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-      <div style={{ zoom: scale, width: "100%" }}>{children}</div>
+      <div style={{ zoom: scale, width: "100%", maxWidth: mockupWidth }}>{children}</div>
     </div>
   );
 }
@@ -469,7 +586,9 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
   const [viewportH, setViewportH] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
 
-  const isMobile = windowWidth < 768;
+  const isPhone = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth < 1024;
+  const isMobile = isPhone; // legacy: mobile = phone for layout
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -503,25 +622,28 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
   const textOpacity   = 1 - seg(progress, 0.05, 0.12);
   const mergeProgress = seg(progress, 0.08, 0.20);
 
-  // Client: in 0.18–0.28, pinned 0.28–0.36, out 0.36–0.44
-  const clientIn      = seg(progress, 0.18, 0.28);
-  const clientOut     = seg(progress, 0.36, 0.44);  // simultaneous with aiIn
+  // Desktop & phone: Client → AI → Trainer. Tablet: Client + Trainer (no AI).
+  const clientInBase  = seg(progress, 0.18, 0.28);
+  const clientOutBase = seg(progress, 0.36, 0.44);
+  const clientIn      = clientInBase;
+  const clientOut     = isTablet ? seg(progress, 0.28, 0.36) : clientOutBase;
   const clientOpacity = Math.min(clientIn, 1 - clientOut);
   const clientY       = (1 - clientIn) * -120 + clientOut * 80;
 
-  // AI: in 0.36–0.44 (crossfade with client), pinned 0.44–0.52, out 0.52–0.62 (crossfade with trainer)
-  const aiIn      = seg(progress, 0.36, 0.44);  // same window as clientOut → clean crossfade
-  const aiOut     = seg(progress, 0.52, 0.62);  // same window as trainerIn → clean crossfade
-  const aiOpacity = Math.min(aiIn, 1 - aiOut);
+  const aiIn      = seg(progress, 0.36, 0.44);
+  const aiOut     = seg(progress, 0.52, 0.62);
+  const aiOpacityRaw = Math.min(aiIn, 1 - aiOut);
+  const aiOpacity = isTablet ? 0 : aiOpacityRaw;
   const aiY       = (1 - aiIn) * -120 + aiOut * 80;
 
-  // Trainer: in 0.52–0.62 (crossfade with AI), pinned 0.62–1.00
-  const trainerIn      = seg(progress, 0.52, 0.62);  // same window as aiOut
+  const trainerInBase = seg(progress, 0.52, 0.62);
+  const trainerInTablet = seg(progress, 0.36, 0.48);
+  const trainerIn      = isTablet ? trainerInTablet : trainerInBase;
   const trainerOpacity = trainerIn;
   const trainerY       = (1 - trainerIn) * -120;
 
   const showClient  = clientOpacity  > 0.01;
-  const showAi      = aiOpacity      > 0.01;
+  const showAi      = aiOpacity      > 0.01 && !isTablet;
   const showTrainer = trainerOpacity > 0.01;
 
   const splitGrid = (): React.CSSProperties => ({
@@ -608,7 +730,7 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
                 phaseIn={clientIn} side="left" isMobile={isMobile}
               />
               <MockupWrap isMobile={isMobile} windowWidth={windowWidth}>
-                <ClientMockup />
+                <ClientMockup mobile={isMobile} />
                 <FloatingBadge text="Tréner vidí toto práve teraz" sub="Posledná aktualizácia: pred 2 min" phaseIn={clientIn} position={{ top: "-18px", right: "0px" }} accent="green" isMobile={isMobile} />
               </MockupWrap>
             </div>
@@ -628,7 +750,7 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
                 phaseIn={aiIn} side="left" isMobile={isMobile}
               />
               <MockupWrap isMobile={isMobile} windowWidth={windowWidth}>
-                <AiMockup />
+                <AiMockup mobile={isMobile} />
                 <FloatingBadge text="AI kouč je vždy online" sub="Odpovedá do 3 sekúnd" phaseIn={aiIn} position={{ top: "-18px", right: "0px" }} accent="purple" isMobile={isMobile} />
               </MockupWrap>
             </div>
@@ -640,7 +762,7 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none", opacity: trainerOpacity, transform: `translateY(${trainerY}px)` }}>
             <div style={splitGrid()}>
               <MockupWrap isMobile={isMobile} windowWidth={windowWidth}>
-                <TrainerMockup />
+                <TrainerMockup mobile={isMobile} />
                 <FloatingBadge text="3 upozornenia vyžadujú akciu" sub="Tomáš M. · 4 dni bez aktivity" phaseIn={trainerIn} position={{ top: "-18px", left: "0px" }} accent="green" isMobile={isMobile} />
               </MockupWrap>
               <SideCopy
@@ -655,7 +777,7 @@ export function HeroParallaxZone({ role, dashboardHref }: Props) {
           </div>
         )}
 
-        <PhaseDots progress={progress} isMobile={isMobile} />
+        <PhaseDots progress={progress} isMobile={isMobile} isPhone={isPhone} isTablet={isTablet} />
         <ScrollHint visible={progress < 0.05} />
         <ScrollBar progress={progress} />
       </div>

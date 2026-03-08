@@ -15,6 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -38,23 +39,33 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { createClient } from "@/lib/supabase/client";
 
-const trainerNav = [
+export const trainerBottomNav = [
   { title: "Dashboard", url: "/trainer", icon: LayoutDashboard },
   { title: "Klienti", url: "/trainer/clients", icon: Users },
   { title: "Jedálničky", url: "/trainer/plans/meal", icon: ClipboardList },
-  { title: "Zoznam jedál", url: "/trainer/plans/meal-templates", icon: Utensils },
-  { title: "Tréningové plány", url: "/trainer/plans/training", icon: Dumbbell },
+  { title: "Tréningy", url: "/trainer/plans/training", icon: Dumbbell },
 ];
 
-const clientNav = [
+export const trainerHamburgerNav = [
+  { title: "Zoznam jedál", url: "/trainer/plans/meal-templates", icon: Utensils },
+];
+
+const trainerNav = [...trainerBottomNav, ...trainerHamburgerNav];
+
+export const clientBottomNav = [
   { title: "Dashboard", url: "/client", icon: LayoutDashboard },
   { title: "Jedálniček", url: "/client/meal-plan", icon: ClipboardList },
   { title: "Strava", url: "/client/food", icon: Utensils },
   { title: "Tréning", url: "/client/workout", icon: Dumbbell },
-  { title: "Váha", url: "/client/progress/weight", icon: Scale },
-  { title: "Merania", url: "/client/progress/measurements", icon: Ruler },
   { title: "Pokrok", url: "/client/progress", icon: TrendingUp },
 ];
+
+export const clientHamburgerNav = [
+  { title: "Váha", url: "/client/progress/weight", icon: Scale },
+  { title: "Merania", url: "/client/progress/measurements", icon: Ruler },
+];
+
+const clientNav = [...clientBottomNav, ...clientHamburgerNav];
 
 interface AppSidebarProps {
   profile: Profile;
@@ -63,11 +74,13 @@ interface AppSidebarProps {
 export function AppSidebar({ profile }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isMobile } = useSidebar();
   const { data: unresolvedCount = 0 } = trpc.analytics.getUnresolvedAlertCount.useQuery(
     undefined,
     { enabled: profile.role === "TRAINER" }
   );
   const nav = profile.role === "TRAINER" ? trainerNav : clientNav;
+  const hamburgerNav = profile.role === "TRAINER" ? trainerHamburgerNav : clientHamburgerNav;
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -87,11 +100,11 @@ export function AppSidebar({ profile }: AppSidebarProps) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            {profile.role === "TRAINER" ? "Tréner" : "Klient"}
+            {isMobile ? "Ďalšie" : profile.role === "TRAINER" ? "Tréner" : "Klient"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {nav.map((item) => (
+              {(isMobile ? hamburgerNav : nav).map((item) => (
                 <SidebarMenuItem key={item.url} className="w-full">
                   <SidebarMenuButton
                     isActive={pathname === item.url}

@@ -15,6 +15,7 @@ export default async function ClientDashboardPage() {
   const today = new Date();
   const todayStart = startOfDay(today);
   const sevenDaysAgo = startOfDay(subDays(today, 6));
+  const thirtyDaysAgo = startOfDay(subDays(today, 29));
 
   const [
     lastWeight,
@@ -22,7 +23,10 @@ export default async function ClientDashboardPage() {
     todayFoodLog,
     todayWorkout,
     weightLogsLast14,
+    weightLogsLast30,
     foodLogsLast7Days,
+    foodLogsLast30Days,
+    workoutLogsLast30Days,
   ] = await Promise.all([
     prisma.weightLog.findFirst({
       where: { profileId: profile.id },
@@ -38,12 +42,16 @@ export default async function ClientDashboardPage() {
     }),
     prisma.workoutLog.findFirst({
       where: { profileId: profile.id, date: todayStart },
-      include: { items: true },
+      include: { items: { include: { exercise: true, sets: true } } },
     }),
     prisma.weightLog.findMany({
       where: { profileId: profile.id },
       orderBy: { loggedAt: "desc" },
       take: 14,
+    }),
+    prisma.weightLog.findMany({
+      where: { profileId: profile.id, loggedAt: { gte: thirtyDaysAgo } },
+      orderBy: { loggedAt: "asc" },
     }),
     prisma.foodLog.findMany({
       where: {
@@ -52,7 +60,43 @@ export default async function ClientDashboardPage() {
       },
       include: { items: { include: { food: true } } },
     }),
+    prisma.foodLog.findMany({
+      where: {
+        profileId: profile.id,
+        date: { gte: thirtyDaysAgo },
+      },
+      select: { date: true },
+    }),
+    prisma.workoutLog.findMany({
+      where: {
+        profileId: profile.id,
+        date: { gte: thirtyDaysAgo },
+      },
+      select: { date: true },
+    }),
   ]);
+
+  const datesWithActivity = new Set<string>();
+  foodLogsLast30Days.forEach((f: { date: Date }) => datesWithActivity.add(format(f.date, "yyyy-MM-dd")));
+  workoutLogsLast30Days.forEach((w: { date: Date }) => datesWithActivity.add(format(w.date, "yyyy-MM-dd")));
+  let streakDays = 0;
+  for (let d = 0; d < 365; d++) {
+    const day = subDays(today, d);
+    if (datesWithActivity.has(format(day, "yyyy-MM-dd"))) streakDays++;
+    else break;
+  }
+
+  const weightLogsForChart = weightLogsLast30
+    .map((w: { weight: number; unit: string; loggedAt: Date }) => ({
+      weight: w.weight,
+      unit: w.unit,
+      loggedAt: w.loggedAt.toISOString(),
+    }))
+    .sort((a: { loggedAt: string }, b: { loggedAt: string }) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime());
+  const weightDelta =
+    weightLogsForChart.length >= 2
+      ? Math.round((weightLogsForChart[weightLogsForChart.length - 1]!.weight - weightLogsForChart[0]!.weight) * 10) / 10
+      : null;
 
   const todayFoodLogSingle = todayFoodLog?.[0];
   type FoodLogItemWithFood = { food: { calories: number; servingSize?: number }; amount: number };
@@ -108,15 +152,29 @@ export default async function ClientDashboardPage() {
         todayFoodCount={todayFoodLogSingle?.items.length ?? 0}
         todayWorkout={
           todayWorkout
-            ? { name: todayWorkout.name, itemsCount: todayWorkout.items.length }
+            ? {
+                name: todayWorkout.name,
+                itemsCount: todayWorkout.items.length,
+                items: todayWorkout.items.map(
+                  (item: { exercise: { name: string }; sets: unknown[] }) => ({
+                    exerciseName: item.exercise.name,
+                    doneSets: item.sets.length,
+                    totalSets: Math.max(item.sets.length, 4),
+                  })
+                ),
+              }
             : null
         }
+        streakDays={streakDays}
         weightLogs={weightLogsLast14.map((w: { weight: number; unit: string; loggedAt: Date }) => ({
           weight: w.weight,
           unit: w.unit,
           loggedAt: w.loggedAt.toISOString(),
         }))}
+        weightLogs30={weightLogsForChart}
+        weightDelta={weightDelta}
         last7DaysCalories={last7DaysCalories}
+        calorieTarget={2200}
       />
     </div>
   );
