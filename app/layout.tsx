@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "sonner";
+import { PwaInstallProvider } from "@/components/pwa-install-context";
 import { Providers } from "@/components/providers";
 import { PwaRegister } from "@/components/pwa-register";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,9 +38,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${font.variable} font-sans antialiased`}>
         <Providers>
-          <PwaRegister />
-          <TooltipProvider>{children}</TooltipProvider>
-          <Toaster richColors position="top-center" />
+          <PwaInstallProvider>
+            <PwaRegister />
+            <TooltipProvider>{children}</TooltipProvider>
+            <Toaster richColors position="top-center" />
+          </PwaInstallProvider>
         </Providers>
       </body>
     </html>

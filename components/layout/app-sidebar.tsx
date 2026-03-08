@@ -35,8 +35,10 @@ import {
   ChevronUp,
   LogOut,
   User,
+  Smartphone,
 } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
+import { usePwaInstall } from "@/components/pwa-install-context";
 import { createClient } from "@/lib/supabase/client";
 
 export const trainerBottomNav = [
@@ -74,7 +76,8 @@ interface AppSidebarProps {
 export function AppSidebar({ profile }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const pwaInstall = usePwaInstall();
   const { data: unresolvedCount = 0 } = trpc.analytics.getUnresolvedAlertCount.useQuery(
     undefined,
     { enabled: profile.role === "TRAINER" }
@@ -132,6 +135,29 @@ export function AppSidebar({ profile }: AppSidebarProps) {
 
       <SidebarFooter className="border-t">
         <SidebarMenu>
+          {pwaInstall && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 h-8 text-left [&_svg]:size-4 [&_svg]:shrink-0"
+                onClick={async () => {
+                  if (pwaInstall.canInstall) {
+                    if (isMobile) setOpenMobile(false);
+                    await pwaInstall.install();
+                  }
+                }}
+                disabled={!pwaInstall.canInstall || pwaInstall.isInstalling}
+              >
+                <Smartphone className="h-4 w-4 shrink-0" />
+                <span className="truncate flex-1">
+                  {pwaInstall.isInstalling
+                    ? "Inštalujem…"
+                    : pwaInstall.canInstall
+                      ? "Nainštaluj aplikáciu"
+                      : "Pridať na plochu"}
+                </span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger className="w-full cursor-pointer flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 outline-none transition-colors [&_svg]:size-4 [&_svg]:shrink-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
