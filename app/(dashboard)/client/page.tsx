@@ -57,7 +57,7 @@ export default async function ClientDashboardPage() {
   const todayFoodLogSingle = todayFoodLog?.[0];
   const totalCalories =
     todayFoodLogSingle?.items.reduce(
-      (sum, item) => sum + (item.food.calories * item.amount) / (item.food.servingSize || 100),
+      (sum: number, item) => sum + (item.food.calories * item.amount) / (item.food.servingSize || 100),
       0
     ) ?? 0;
 
@@ -68,7 +68,7 @@ export default async function ClientDashboardPage() {
       (f) => format(f.date, "yyyy-MM-dd") === dateStr
     );
     const calories = log?.items.reduce(
-      (s, item) => s + (item.food.calories * item.amount) / (item.food.servingSize || 100),
+      (s: number, item) => s + (item.food.calories * item.amount) / (item.food.servingSize || 100),
       0
     ) ?? 0;
     return {
