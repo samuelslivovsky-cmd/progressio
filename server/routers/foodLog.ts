@@ -83,6 +83,36 @@ export const foodLogRouter = router({
       });
     }),
 
+  /** Pridanie vlastného jedla len s názvom + gramáž (bez vytvárania Food záznamu). */
+  addSimpleItem: protectedProcedure
+    .input(
+      z.object({
+        date: z.string(),
+        customName: z.string().min(1),
+        amount: z.number().positive(),
+        mealType: mealTypeEnum,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const date = new Date(input.date);
+      const log = await ctx.prisma.foodLog.upsert({
+        where: {
+          profileId_date: { profileId: ctx.profile.id, date },
+        },
+        create: { profileId: ctx.profile.id, date },
+        update: {},
+      });
+
+      return ctx.prisma.foodLogItem.create({
+        data: {
+          foodLogId: log.id,
+          customName: input.customName.trim(),
+          amount: input.amount,
+          mealType: input.mealType,
+        },
+      });
+    }),
+
   removeItem: protectedProcedure
     .input(z.object({ itemId: z.string() }))
     .mutation(async ({ ctx, input }) => {

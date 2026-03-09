@@ -108,7 +108,13 @@ export function AddFoodLogItemDialog({
     onError: (e) => toast.error(e.message),
   });
 
-  const createSimple = trpc.food.createSimple.useMutation({
+  const addSimpleItem = trpc.foodLog.addSimpleItem.useMutation({
+    onSuccess: () => {
+      toast.success("Jedlo pridané");
+      onOpenChange(false);
+      resetForm();
+      onSuccess();
+    },
     onError: (e) => setError(e.message),
   });
 
@@ -173,19 +179,12 @@ export function AddFoodLogItemDialog({
       setError("Zadaj platnú gramáž");
       return;
     }
-    createSimple.mutate(
-      { name, servingSize: 100 },
-      {
-        onSuccess: (food) => {
-          addItem.mutate({
-            date,
-            foodId: food.id,
-            amount: grams,
-            mealType,
-          });
-        },
-      }
-    );
+    addSimpleItem.mutate({
+      date,
+      customName: name,
+      amount: grams,
+      mealType,
+    });
   }
 
   function handleCreateAndAdd(e?: React.FormEvent) {
@@ -452,9 +451,9 @@ export function AddFoodLogItemDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={!simpleName.trim() || createSimple.isPending}
+                disabled={!simpleName.trim() || addSimpleItem.isPending}
               >
-                {createSimple.isPending ? "Pridávam…" : "Pridať"}
+                {addSimpleItem.isPending ? "Pridávam…" : "Pridať"}
               </Button>
             </DialogFooter>
           </form>

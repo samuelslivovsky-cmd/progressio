@@ -34,7 +34,8 @@ type FoodLogItem = {
   id: string;
   amount: number;
   mealType: string;
-  food: Food;
+  customName: string | null;
+  food: Food | null;
 };
 
 type FoodLogWithItems = {
@@ -44,6 +45,7 @@ type FoodLogWithItems = {
 } | null;
 
 function itemCalories(item: FoodLogItem): number {
+  if (!item.food) return 0;
   const mult = item.amount / (item.food.servingSize || 100);
   return item.food.calories * mult;
 }
@@ -139,9 +141,9 @@ export function ClientFoodLogView({ clientId, clientName }: ClientFoodLogViewPro
                             key={item.id}
                             className="py-2 border-b border-border/50 last:border-0"
                           >
-                            <span className="font-medium">{item.food.name}</span>
+                            <span className="font-medium">{item.food?.name ?? item.customName ?? "Neznáme jedlo"}</span>
                             <span className="text-muted-foreground text-sm ml-2">
-                              {item.amount} {item.food.unit} · {cal} kcal
+                              {item.amount} {item.food?.unit ?? "g"}{item.food ? ` · ${cal} kcal` : ""}
                             </span>
                           </li>
                         );

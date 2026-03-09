@@ -190,13 +190,14 @@ model FoodLog {
 }
 
 model FoodLogItem {
-  id        String  @id @default(cuid())
-  foodLog   FoodLog @relation(fields: [foodLogId], references: [id])
-  foodLogId String  @map("food_log_id")
-  food      Food    @relation(fields: [foodId], references: [id])
-  foodId    String  @map("food_id")
-  amount    Float
-  mealType  String  @map("meal_type") // breakfast, desiata, lunch, olovrant, dinner
+  id         String  @id @default(cuid())
+  foodLog    FoodLog @relation(fields: [foodLogId], references: [id])
+  foodLogId  String  @map("food_log_id")
+  food       Food?   @relation(fields: [foodId], references: [id])
+  foodId     String? @map("food_id")
+  customName String? @map("custom_name")
+  amount     Float
+  mealType   String  @map("meal_type") // breakfast, desiata, lunch, olovrant, dinner
 
   @@index([foodLogId])
   @@map("food_log_items")

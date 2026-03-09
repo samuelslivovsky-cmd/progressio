@@ -249,10 +249,10 @@ export function ClientDetailTabs({
             <EmptyState title="Žiadne záznamy stravy" />
           ) : (
             <div className="space-y-2">
-              {foodLogs.map((log: { id: string; date: Date | string; items: { food: { calories: number; servingSize?: number }; amount: number }[] }) => {
+              {foodLogs.map((log: { id: string; date: Date | string; items: { food: { calories: number; servingSize?: number } | null; amount: number }[] }) => {
                 const totalCal = log.items.reduce(
-                  (s: number, i: { food: { calories: number; servingSize?: number }; amount: number }) =>
-                    s + (i.food.calories * i.amount) / Math.max(1, i.food.servingSize ?? 100),
+                  (s: number, i: { food: { calories: number; servingSize?: number } | null; amount: number }) =>
+                    s + (i.food ? (i.food.calories * i.amount) / Math.max(1, i.food.servingSize ?? 100) : 0),
                   0
                 );
                 return (

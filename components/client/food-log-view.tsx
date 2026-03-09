@@ -38,7 +38,8 @@ type FoodLogItem = {
   id: string;
   amount: number;
   mealType: string;
-  food: Food;
+  customName: string | null;
+  food: Food | null;
 };
 
 type FoodLogWithItems = {
@@ -48,27 +49,37 @@ type FoodLogWithItems = {
 } | null;
 
 function itemMultiplier(item: FoodLogItem): number {
+  if (!item.food) return 1;
   return item.amount / (item.food.servingSize || 100);
 }
 
 function itemCalories(item: FoodLogItem): number {
+  if (!item.food) return 0;
   return item.food.calories * itemMultiplier(item);
 }
 
 function itemProtein(item: FoodLogItem): number {
+  if (!item.food) return 0;
   return item.food.protein * itemMultiplier(item);
 }
 
 function itemCarbs(item: FoodLogItem): number {
+  if (!item.food) return 0;
   return item.food.carbs * itemMultiplier(item);
 }
 
 function itemFat(item: FoodLogItem): number {
+  if (!item.food) return 0;
   return item.food.fat * itemMultiplier(item);
 }
 
 function itemFiber(item: FoodLogItem): number {
+  if (!item.food) return 0;
   return (item.food.fiber ?? 0) * itemMultiplier(item);
+}
+
+function itemDisplayName(item: FoodLogItem): string {
+  return item.food?.name ?? item.customName ?? "Neznáme jedlo";
 }
 
 export function FoodLogView() {
@@ -327,9 +338,9 @@ export function FoodLogView() {
                           className="flex items-center justify-between gap-2 py-2 border-b border-border/50 last:border-0"
                         >
                           <div className="min-w-0">
-                            <span className="font-medium">{item.food.name}</span>
+                            <span className="font-medium">{itemDisplayName(item)}</span>
                             <span className="text-muted-foreground text-sm ml-2">
-                              {item.amount} {item.food.unit} · {cal} kcal
+                              {item.amount} {item.food?.unit ?? "g"}{item.food ? ` · ${cal} kcal` : ""}
                             </span>
                           </div>
                           <Button
