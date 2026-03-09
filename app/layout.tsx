@@ -15,6 +15,10 @@ const font = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Progressio",
   description: "Fitness tracker pre trénerov a klientov",
+  icons: {
+    icon: "/icon",
+    apple: "/apple-icon",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
