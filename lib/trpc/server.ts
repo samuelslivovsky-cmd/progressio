@@ -1,12 +1,10 @@
-import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
-import superjson from "superjson";
-import type { AppRouter } from "@/server/routers";
+import { createCallerFactory } from "@/server/trpc";
+import { appRouter } from "@/server/routers";
+import { createContext } from "@/server/context";
 
-export const trpcServer = createTRPCProxyClient<AppRouter>({
-  links: [
-    httpBatchLink({
-      url: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/trpc`,
-      transformer: superjson,
-    }),
-  ],
-});
+const createCaller = createCallerFactory(appRouter);
+
+export async function trpcServer() {
+  const ctx = await createContext();
+  return createCaller(ctx);
+}

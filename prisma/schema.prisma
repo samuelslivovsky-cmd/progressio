@@ -90,6 +90,8 @@ model Alert {
   resolved  Boolean   @default(false)
   createdAt DateTime  @default(now()) @map("created_at")
 
+  @@index([trainerId, resolved])
+  @@index([clientId, resolved])
   @@map("alerts")
 }
 
@@ -104,6 +106,7 @@ model AnalyticsSnapshot {
   dropOffScore      Float    @map("drop_off_score")
   createdAt         DateTime @default(now()) @map("created_at")
 
+  @@index([clientId, date])
   @@map("analytics_snapshots")
 }
 
@@ -130,6 +133,7 @@ model WeightLog {
   note      String?
   loggedAt  DateTime        @default(now()) @map("logged_at")
 
+  @@index([profileId, loggedAt])
   @@map("weight_logs")
 }
 
@@ -194,6 +198,7 @@ model FoodLogItem {
   amount    Float
   mealType  String  @map("meal_type") // breakfast, desiata, lunch, olovrant, dinner
 
+  @@index([foodLogId])
   @@map("food_log_items")
 }
 
@@ -221,6 +226,7 @@ model MealPlanDay {
   dayNumber  Int      @map("day_number") // 1-7
   meals      Meal[]
 
+  @@index([mealPlanId])
   @@map("meal_plan_days")
 }
 
@@ -231,6 +237,7 @@ model Meal {
   name          String // breakfast, desiata, lunch, olovrant, dinner
   items         MealItem[]
 
+  @@index([mealPlanDayId])
   @@map("meals")
 }
 
@@ -242,6 +249,7 @@ model MealItem {
   foodId String @map("food_id")
   amount Float
 
+  @@index([mealId])
   @@map("meal_items")
 }
 
@@ -323,6 +331,7 @@ model TrainingPlanDay {
   isRestDay      Boolean                @default(false) @map("is_rest_day")
   exercises      TrainingPlanExercise[]
 
+  @@index([trainingPlanId])
   @@map("training_plan_days")
 }
 
@@ -338,6 +347,7 @@ model TrainingPlanExercise {
   note              String?
   order             Int
 
+  @@index([trainingPlanDayId])
   @@map("training_plan_exercises")
 }
 
@@ -405,6 +415,7 @@ model WorkoutLog {
   note        String?
   createdAt   DateTime         @default(now()) @map("created_at")
 
+  @@index([profileId, date])
   @@map("workout_logs")
 }
 
@@ -416,6 +427,7 @@ model WorkoutLogItem {
   exerciseId   String       @map("exercise_id")
   sets         WorkoutSet[]
 
+  @@index([workoutLogId])
   @@map("workout_log_items")
 }
 
@@ -428,6 +440,7 @@ model WorkoutSet {
   durationSec      Int?           @map("duration_sec")
   note             String?
 
+  @@index([workoutLogItemId])
   @@map("workout_sets")
 }
 

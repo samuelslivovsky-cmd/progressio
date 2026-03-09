@@ -205,41 +205,49 @@ export const mealPlanRouter = router({
       });
       if (!sourceDay) throw new Error("Zdrojový deň neexistuje");
 
-      let targetDay = await ctx.prisma.mealPlanDay.findFirst({
-        where: { mealPlanId: input.mealPlanId, dayNumber: input.targetDayNumber },
-        include: { meals: { include: { items: true } } },
-      });
-      if (targetDay) {
-        for (const meal of targetDay.meals) {
-          await ctx.prisma.mealItem.deleteMany({ where: { mealId: meal.id } });
-        }
-        await ctx.prisma.meal.deleteMany({ where: { mealPlanDayId: targetDay.id } });
-      } else {
-        targetDay = await ctx.prisma.mealPlanDay.create({
-          data: { mealPlanId: input.mealPlanId, dayNumber: input.targetDayNumber },
-          include: { meals: { include: { items: true } } },
+      return ctx.prisma.$transaction(async (tx) => {
+        let targetDay = await tx.mealPlanDay.findFirst({
+          where: { mealPlanId: input.mealPlanId, dayNumber: input.targetDayNumber },
         });
-      }
-
-      for (const meal of sourceDay.meals) {
-        const newMeal = await ctx.prisma.meal.create({
-          data: { mealPlanDayId: targetDay!.id, name: meal.name },
-        });
-        for (const it of meal.items) {
-          await ctx.prisma.mealItem.create({
-            data: { mealId: newMeal.id, foodId: it.foodId, amount: it.amount },
+        if (targetDay) {
+          const mealIds = (await tx.meal.findMany({
+            where: { mealPlanDayId: targetDay.id },
+            select: { id: true },
+          })).map((m) => m.id);
+          if (mealIds.length > 0) {
+            await tx.mealItem.deleteMany({ where: { mealId: { in: mealIds } } });
+          }
+          await tx.meal.deleteMany({ where: { mealPlanDayId: targetDay.id } });
+        } else {
+          targetDay = await tx.mealPlanDay.create({
+            data: { mealPlanId: input.mealPlanId, dayNumber: input.targetDayNumber },
           });
         }
-      }
 
-      return ctx.prisma.mealPlan.findUniqueOrThrow({
-        where: { id: input.mealPlanId },
-        include: {
-          days: {
-            orderBy: { dayNumber: "asc" },
-            include: { meals: { include: { items: { include: { food: true } } } } },
+        for (const meal of sourceDay.meals) {
+          const newMeal = await tx.meal.create({
+            data: { mealPlanDayId: targetDay.id, name: meal.name },
+          });
+          if (meal.items.length > 0) {
+            await tx.mealItem.createMany({
+              data: meal.items.map((it) => ({
+                mealId: newMeal.id,
+                foodId: it.foodId,
+                amount: it.amount,
+              })),
+            });
+          }
+        }
+
+        return tx.mealPlan.findUniqueOrThrow({
+          where: { id: input.mealPlanId },
+          include: {
+            days: {
+              orderBy: { dayNumber: "asc" },
+              include: { meals: { include: { items: { include: { food: true } } } } },
+            },
           },
-        },
+        });
       });
     }),
 
@@ -261,9 +269,13 @@ export const mealPlanRouter = router({
         include: { items: true },
       });
       if (!template) throw new Error("Šablóna jedla neexistuje");
-      for (const it of template.items) {
-        await ctx.prisma.mealItem.create({
-          data: { mealId: input.mealId, foodId: it.foodId, amount: it.amount },
+      if (template.items.length > 0) {
+        await ctx.prisma.mealItem.createMany({
+          data: template.items.map((it) => ({
+            mealId: input.mealId,
+            foodId: it.foodId,
+            amount: it.amount,
+          })),
         });
       }
       return ctx.prisma.meal.findUniqueOrThrow({
@@ -312,53 +324,66 @@ export const mealPlanRouter = router({
       });
       if (!plan) throw new Error("Plán neexistuje");
 
-      if (input.name !== undefined || input.description !== undefined) {
-        await ctx.prisma.mealPlan.update({
-          where: { id: input.mealPlanId },
-          data: {
-            ...(input.name !== undefined && { name: input.name }),
-            ...(input.description !== undefined && { description: input.description }),
-          },
-        });
-      }
-
-      const existingDays = await ctx.prisma.mealPlanDay.findMany({
-        where: { mealPlanId: input.mealPlanId },
-        include: { meals: { include: { items: true } } },
-      });
-
-      for (const day of existingDays) {
-        for (const meal of day.meals) {
-          await ctx.prisma.mealItem.deleteMany({ where: { mealId: meal.id } });
-        }
-        await ctx.prisma.meal.deleteMany({ where: { mealPlanDayId: day.id } });
-      }
-      await ctx.prisma.mealPlanDay.deleteMany({ where: { mealPlanId: input.mealPlanId } });
-
-      for (const d of input.days) {
-        const day = await ctx.prisma.mealPlanDay.create({
-          data: { mealPlanId: input.mealPlanId, dayNumber: d.dayNumber },
-        });
-        for (const m of d.meals) {
-          const meal = await ctx.prisma.meal.create({
-            data: { mealPlanDayId: day.id, name: m.name },
+      return ctx.prisma.$transaction(async (tx) => {
+        if (input.name !== undefined || input.description !== undefined) {
+          await tx.mealPlan.update({
+            where: { id: input.mealPlanId },
+            data: {
+              ...(input.name !== undefined && { name: input.name }),
+              ...(input.description !== undefined && { description: input.description }),
+            },
           });
-          for (const it of m.items) {
-            await ctx.prisma.mealItem.create({
-              data: { mealId: meal.id, foodId: it.foodId, amount: it.amount },
+        }
+
+        // Bulk delete existing structure
+        const existingDayIds = (await tx.mealPlanDay.findMany({
+          where: { mealPlanId: input.mealPlanId },
+          select: { id: true },
+        })).map((d) => d.id);
+
+        if (existingDayIds.length > 0) {
+          const existingMealIds = (await tx.meal.findMany({
+            where: { mealPlanDayId: { in: existingDayIds } },
+            select: { id: true },
+          })).map((m) => m.id);
+
+          if (existingMealIds.length > 0) {
+            await tx.mealItem.deleteMany({ where: { mealId: { in: existingMealIds } } });
+          }
+          await tx.meal.deleteMany({ where: { mealPlanDayId: { in: existingDayIds } } });
+          await tx.mealPlanDay.deleteMany({ where: { mealPlanId: input.mealPlanId } });
+        }
+
+        // Create new structure with createMany where possible
+        for (const d of input.days) {
+          const day = await tx.mealPlanDay.create({
+            data: { mealPlanId: input.mealPlanId, dayNumber: d.dayNumber },
+          });
+          for (const m of d.meals) {
+            const meal = await tx.meal.create({
+              data: { mealPlanDayId: day.id, name: m.name },
             });
+            if (m.items.length > 0) {
+              await tx.mealItem.createMany({
+                data: m.items.map((it) => ({
+                  mealId: meal.id,
+                  foodId: it.foodId,
+                  amount: it.amount,
+                })),
+              });
+            }
           }
         }
-      }
 
-      return ctx.prisma.mealPlan.findUniqueOrThrow({
-        where: { id: input.mealPlanId },
-        include: {
-          days: {
-            orderBy: { dayNumber: "asc" },
-            include: { meals: { include: { items: { include: { food: true } } } } },
+        return tx.mealPlan.findUniqueOrThrow({
+          where: { id: input.mealPlanId },
+          include: {
+            days: {
+              orderBy: { dayNumber: "asc" },
+              include: { meals: { include: { items: { include: { food: true } } } } },
+            },
           },
-        },
+        });
       });
     }),
 
@@ -375,37 +400,44 @@ export const mealPlanRouter = router({
         },
       });
       if (!source) throw new Error("Plán neexistuje");
-      const newPlan = await ctx.prisma.mealPlan.create({
-        data: {
-          trainerId: ctx.profile.id,
-          name: `${source.name} (kópia)`,
-          description: source.description,
-          calorieTargetPerDay: source.calorieTargetPerDay,
-        },
-      });
-      for (const day of source.days) {
-        const newDay = await ctx.prisma.mealPlanDay.create({
-          data: { mealPlanId: newPlan.id, dayNumber: day.dayNumber },
+
+      return ctx.prisma.$transaction(async (tx) => {
+        const newPlan = await tx.mealPlan.create({
+          data: {
+            trainerId: ctx.profile.id,
+            name: `${source.name} (kópia)`,
+            description: source.description,
+            calorieTargetPerDay: source.calorieTargetPerDay,
+          },
         });
-        for (const meal of day.meals) {
-          const newMeal = await ctx.prisma.meal.create({
-            data: { mealPlanDayId: newDay.id, name: meal.name },
+        for (const day of source.days) {
+          const newDay = await tx.mealPlanDay.create({
+            data: { mealPlanId: newPlan.id, dayNumber: day.dayNumber },
           });
-          for (const it of meal.items) {
-            await ctx.prisma.mealItem.create({
-              data: { mealId: newMeal.id, foodId: it.foodId, amount: it.amount },
+          for (const meal of day.meals) {
+            const newMeal = await tx.meal.create({
+              data: { mealPlanDayId: newDay.id, name: meal.name },
             });
+            if (meal.items.length > 0) {
+              await tx.mealItem.createMany({
+                data: meal.items.map((it) => ({
+                  mealId: newMeal.id,
+                  foodId: it.foodId,
+                  amount: it.amount,
+                })),
+              });
+            }
           }
         }
-      }
-      return ctx.prisma.mealPlan.findUniqueOrThrow({
-        where: { id: newPlan.id },
-        include: {
-          days: {
-            orderBy: { dayNumber: "asc" },
-            include: { meals: { include: { items: { include: { food: true } } } } },
+        return tx.mealPlan.findUniqueOrThrow({
+          where: { id: newPlan.id },
+          include: {
+            days: {
+              orderBy: { dayNumber: "asc" },
+              include: { meals: { include: { items: { include: { food: true } } } } },
+            },
           },
-        },
+        });
       });
     }),
 });

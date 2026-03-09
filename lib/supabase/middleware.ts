@@ -25,9 +25,12 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // Use getSession() (local JWT check) instead of getUser() (network call)
+  // to avoid a Supabase round-trip on every request. The actual verification
+  // happens in createContext via getUser() for tRPC procedures.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const { pathname } = request.nextUrl;
   const isPublicPage =
@@ -42,7 +45,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/icon-192") ||
     pathname.startsWith("/icon-512");
 
-  if (!user && !isPublicPage && !isPwaAsset) {
+  if (!session && !isPublicPage && !isPwaAsset) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

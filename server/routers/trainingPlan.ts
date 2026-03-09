@@ -370,51 +370,52 @@ export const trainingPlanRouter = router({
         include: {
           days: {
             orderBy: { dayNumber: "asc" },
-            include: {
-              exercises: true,
-            },
+            include: { exercises: true },
           },
         },
       });
       if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
-      const newPlan = await ctx.prisma.trainingPlan.create({
-        data: {
-          trainerId: ctx.profile.id,
-          name: `${source.name} (kópia)`,
-          description: source.description,
-        },
-      });
-      for (const day of source.days) {
-        const newDay = await ctx.prisma.trainingPlanDay.create({
+
+      return ctx.prisma.$transaction(async (tx) => {
+        const newPlan = await tx.trainingPlan.create({
           data: {
-            trainingPlanId: newPlan.id,
-            dayNumber: day.dayNumber,
-            name: day.name,
-            isRestDay: day.isRestDay,
+            trainerId: ctx.profile.id,
+            name: `${source.name} (kópia)`,
+            description: source.description,
           },
         });
-        for (const ex of day.exercises) {
-          await ctx.prisma.trainingPlanExercise.create({
+        for (const day of source.days) {
+          const newDay = await tx.trainingPlanDay.create({
             data: {
-              trainingPlanDayId: newDay.id,
-              exerciseId: ex.exerciseId,
-              sets: ex.sets,
-              reps: ex.reps,
-              restSeconds: ex.restSeconds,
-              note: ex.note,
-              order: ex.order,
+              trainingPlanId: newPlan.id,
+              dayNumber: day.dayNumber,
+              name: day.name,
+              isRestDay: day.isRestDay,
             },
           });
+          if (day.exercises.length > 0) {
+            await tx.trainingPlanExercise.createMany({
+              data: day.exercises.map((ex) => ({
+                trainingPlanDayId: newDay.id,
+                exerciseId: ex.exerciseId,
+                sets: ex.sets,
+                reps: ex.reps,
+                restSeconds: ex.restSeconds,
+                note: ex.note,
+                order: ex.order,
+              })),
+            });
+          }
         }
-      }
-      return ctx.prisma.trainingPlan.findUniqueOrThrow({
-        where: { id: newPlan.id },
-        include: {
-          days: {
-            orderBy: { dayNumber: "asc" },
-            include: { exercises: { orderBy: { order: "asc" }, include: { exercise: true } } },
+        return tx.trainingPlan.findUniqueOrThrow({
+          where: { id: newPlan.id },
+          include: {
+            days: {
+              orderBy: { dayNumber: "asc" },
+              include: { exercises: { orderBy: { order: "asc" }, include: { exercise: true } } },
+            },
           },
-        },
+        });
       });
     }),
 });

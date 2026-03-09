@@ -62,21 +62,30 @@ export async function getStreakDays(
   clientId: string,
 ): Promise<number> {
   const today = startOfDay(new Date());
+  const from = subDays(today, 365);
+
+  // Fetch all active dates in 2 queries instead of 2 per day
+  const [foodDates, workoutDates] = await Promise.all([
+    prisma.foodLog.findMany({
+      where: { profileId: clientId, date: { gte: from, lt: today } },
+      select: { date: true },
+      distinct: ["date"],
+    }),
+    prisma.workoutLog.findMany({
+      where: { profileId: clientId, date: { gte: from, lt: today } },
+      select: { date: true },
+      distinct: ["date"],
+    }),
+  ]);
+
+  const activeDays = new Set<string>();
+  for (const f of foodDates) activeDays.add(startOfDay(f.date).toISOString());
+  for (const w of workoutDates) activeDays.add(startOfDay(w.date).toISOString());
+
   let streak = 0;
   for (let d = 1; d <= 365; d++) {
     const day = subDays(today, d);
-    const dayEnd = subDays(today, d - 1);
-    const [food, workout] = await Promise.all([
-      prisma.foodLog.findFirst({
-        where: { profileId: clientId, date: day },
-        select: { id: true },
-      }),
-      prisma.workoutLog.findFirst({
-        where: { profileId: clientId, date: day },
-        select: { id: true },
-      }),
-    ]);
-    if (food || workout) streak++;
+    if (activeDays.has(day.toISOString())) streak++;
     else break;
   }
   return streak;
@@ -134,22 +143,31 @@ export async function getLast7DaysActivity(
   clientId: string,
 ): Promise<{ foodDays: boolean[]; workoutDays: boolean[] }> {
   const today = startOfDay(new Date());
+  const from = subDays(today, 7);
+
+  // 2 queries instead of 14
+  const [foodLogs, workoutLogs] = await Promise.all([
+    prisma.foodLog.findMany({
+      where: { profileId: clientId, date: { gte: from, lte: today } },
+      select: { date: true },
+      distinct: ["date"],
+    }),
+    prisma.workoutLog.findMany({
+      where: { profileId: clientId, date: { gte: from, lte: today } },
+      select: { date: true },
+      distinct: ["date"],
+    }),
+  ]);
+
+  const foodSet = new Set(foodLogs.map((f) => startOfDay(f.date).toISOString()));
+  const workoutSet = new Set(workoutLogs.map((w) => startOfDay(w.date).toISOString()));
+
   const foodDays: boolean[] = [];
   const workoutDays: boolean[] = [];
   for (let i = 0; i < 7; i++) {
-    const day = subDays(today, i);
-    const [food, workout] = await Promise.all([
-      prisma.foodLog.findFirst({
-        where: { profileId: clientId, date: day },
-        select: { id: true },
-      }),
-      prisma.workoutLog.findFirst({
-        where: { profileId: clientId, date: day },
-        select: { id: true },
-      }),
-    ]);
-    foodDays.push(!!food);
-    workoutDays.push(!!workout);
+    const day = subDays(today, i).toISOString();
+    foodDays.push(foodSet.has(day));
+    workoutDays.push(workoutSet.has(day));
   }
   return { foodDays, workoutDays };
 }
@@ -165,6 +183,16 @@ export async function getDropOffScore(
     getDaysSinceLastActivity(prisma, clientId),
     getStreakDays(prisma, clientId),
   ]);
+  return computeDropOffScore(workoutAdh, mealAdh, daysInactive, streak);
+}
+
+/** Compute drop-off score from pre-computed metrics (no DB calls). */
+function computeDropOffScore(
+  workoutAdh: number,
+  mealAdh: number,
+  daysInactive: number,
+  streak: number,
+): number {
   const adherenceRisk = 100 - workoutAdh;
   const daysRisk = Math.min(100, daysInactive * 15);
   const loggingRisk = 100 - mealAdh;
@@ -179,10 +207,11 @@ export async function getDropOffScore(
   return Math.round(Math.min(100, Math.max(0, score)));
 }
 
-/** Plateau: váha v rozsahu &lt; 0.5 kg za 21 dní a adherencia &gt; 70%. */
+/** Plateau: váha v rozsahu < 0.5 kg za 21 dní a adherencia > 70%. */
 export async function detectPlateau(
   prisma: PrismaClient,
   clientId: string,
+  precomputedAdherence21?: number,
 ): Promise<{ detected: boolean; rangeKg?: number; message?: string }> {
   const from = subDays(startOfDay(new Date()), 21);
   const weights = await prisma.weightLog.findMany({
@@ -194,7 +223,7 @@ export async function detectPlateau(
   const minW = Math.min(...weights.map((w: { weight: number }) => w.weight));
   const maxW = Math.max(...weights.map((w: { weight: number }) => w.weight));
   const rangeKg = maxW - minW;
-  const adherence = await getWorkoutAdherence(prisma, clientId, 21);
+  const adherence = precomputedAdherence21 ?? await getWorkoutAdherence(prisma, clientId, 21);
   if (rangeKg < 0.5 && adherence >= 70) {
     return {
       detected: true,
@@ -388,103 +417,98 @@ export async function generateAlerts(
   const alerts: AlertInput[] = [];
   const trainerId = link.trainerId;
 
-  const daysInactive = await getDaysSinceLastActivity(prisma, clientId);
+  // Compute all metrics in parallel (no redundant calls)
+  const [daysInactive, workoutAdh14, workoutAdh21, mealAdh, streak, skipped] =
+    await Promise.all([
+      getDaysSinceLastActivity(prisma, clientId),
+      getWorkoutAdherence(prisma, clientId, 14),
+      getWorkoutAdherence(prisma, clientId, 21),
+      getMealAdherence(prisma, clientId, 14),
+      getStreakDays(prisma, clientId),
+      detectSkippedExercises(prisma, clientId),
+    ]);
+
+  // detectPlateau with pre-computed 21-day adherence (avoids re-query)
+  const plateau = await detectPlateau(prisma, clientId, workoutAdh21);
+
+  // Compute drop-off inline (avoids re-querying all metrics)
+  const dropOff = computeDropOffScore(workoutAdh14, mealAdh, daysInactive, streak);
+
+  // Inactive alerts
   if (daysInactive >= 7) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.INACTIVE,
-      severity: "high",
+      trainerId, clientId, type: AlertType.INACTIVE, severity: "high",
       message: `Žiadna aktivita ${daysInactive} dní. Odporúčame kontaktovať klienta.`,
     });
   } else if (daysInactive >= 5) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.INACTIVE,
-      severity: "medium",
+      trainerId, clientId, type: AlertType.INACTIVE, severity: "medium",
       message: `Žiadna aktivita ${daysInactive} dní.`,
     });
   } else if (daysInactive >= 3) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.INACTIVE,
-      severity: "low",
+      trainerId, clientId, type: AlertType.INACTIVE, severity: "low",
       message: `Žiadna aktivita ${daysInactive} dní.`,
     });
   }
 
-  const dropOff = await getDropOffScore(prisma, clientId);
+  // Drop-off alerts
   if (dropOff >= 61) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.DROP_OFF_RISK,
-      severity: "high",
+      trainerId, clientId, type: AlertType.DROP_OFF_RISK, severity: "high",
       message: `Vysoké riziko odpadnutia (skóre ${dropOff}). Odporúčame motivačnú správu alebo úpravu plánu.`,
     });
   } else if (dropOff >= 31) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.DROP_OFF_RISK,
-      severity: "medium",
+      trainerId, clientId, type: AlertType.DROP_OFF_RISK, severity: "medium",
       message: `Stredné riziko odpadnutia (skóre ${dropOff}).`,
     });
   }
 
-  const plateau = await detectPlateau(prisma, clientId);
+  // Plateau
   if (plateau.detected && plateau.message) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.PLATEAU,
-      severity: "medium",
+      trainerId, clientId, type: AlertType.PLATEAU, severity: "medium",
       message: plateau.message,
     });
   }
 
-  const workoutAdh = await getWorkoutAdherence(prisma, clientId, 14);
-  if (workoutAdh < 60) {
+  // Low adherence
+  if (workoutAdh14 < 60) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.LOW_ADHERENCE,
-      severity: workoutAdh < 40 ? "high" : "medium",
-      message: `Nízka tréningová adherencia za 2 týždne: ${workoutAdh}%.`,
+      trainerId, clientId, type: AlertType.LOW_ADHERENCE,
+      severity: workoutAdh14 < 40 ? "high" : "medium",
+      message: `Nízka tréningová adherencia za 2 týždne: ${workoutAdh14}%.`,
     });
   }
 
-  const skipped = await detectSkippedExercises(prisma, clientId);
+  // Skipped exercises
   for (const s of skipped) {
     alerts.push({
-      trainerId,
-      clientId,
-      type: AlertType.SKIPPED_EXERCISE,
-      severity: "medium",
+      trainerId, clientId, type: AlertType.SKIPPED_EXERCISE, severity: "medium",
       message: s.message,
     });
   }
 
+  // Save alerts (skip existing types)
   const existing = await prisma.alert.findMany({
     where: { clientId, resolved: false },
     select: { type: true },
   });
   const existingTypes = new Set(existing.map((e: { type: string }) => e.type));
 
-  for (const a of alerts) {
-    if (existingTypes.has(a.type)) continue;
-    await prisma.alert.create({
-      data: {
+  const newAlerts = alerts.filter((a) => !existingTypes.has(a.type));
+  if (newAlerts.length > 0) {
+    await prisma.alert.createMany({
+      data: newAlerts.map((a) => ({
         trainerId: a.trainerId,
         clientId: a.clientId,
         type: a.type,
         severity: a.severity,
         message: a.message,
-      },
+      })),
     });
-    existingTypes.add(a.type);
   }
+
   return alerts;
 }

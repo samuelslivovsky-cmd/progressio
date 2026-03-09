@@ -115,39 +115,41 @@ export const workoutLogRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const date = new Date(input.date);
-      const log = await ctx.prisma.workoutLog.create({
-        data: {
-          profileId: ctx.profile.id,
-          date,
-          name: input.name,
-          durationMin: input.durationMin,
-          note: input.note,
-        },
-      });
-
-      for (const item of input.items) {
-        const logItem = await ctx.prisma.workoutLogItem.create({
-          data: { workoutLogId: log.id, exerciseId: item.exerciseId },
+      return ctx.prisma.$transaction(async (tx) => {
+        const date = new Date(input.date);
+        const log = await tx.workoutLog.create({
+          data: {
+            profileId: ctx.profile.id,
+            date,
+            name: input.name,
+            durationMin: input.durationMin,
+            note: input.note,
+          },
         });
-        if (item.sets.length > 0) {
-          await ctx.prisma.workoutSet.createMany({
-            data: item.sets.map((set) => ({
-              workoutLogItemId: logItem.id,
-              reps: set.reps ?? null,
-              weightKg: set.weightKg ?? null,
-              durationSec: set.durationSec ?? null,
-              note: set.note ?? null,
-            })),
-          });
-        }
-      }
 
-      return ctx.prisma.workoutLog.findUnique({
-        where: { id: log.id },
-        include: {
-          items: { include: { exercise: true, sets: true } },
-        },
+        for (const item of input.items) {
+          const logItem = await tx.workoutLogItem.create({
+            data: { workoutLogId: log.id, exerciseId: item.exerciseId },
+          });
+          if (item.sets.length > 0) {
+            await tx.workoutSet.createMany({
+              data: item.sets.map((set) => ({
+                workoutLogItemId: logItem.id,
+                reps: set.reps ?? null,
+                weightKg: set.weightKg ?? null,
+                durationSec: set.durationSec ?? null,
+                note: set.note ?? null,
+              })),
+            });
+          }
+        }
+
+        return tx.workoutLog.findUnique({
+          where: { id: log.id },
+          include: {
+            items: { include: { exercise: true, sets: true } },
+          },
+        });
       });
     }),
 });

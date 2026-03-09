@@ -131,11 +131,12 @@ export const generateAlertsForAllClients = trainerProcedure.mutation(async ({ ct
     where: { trainerId: ctx.profile.id },
     select: { clientId: true },
   });
-  const results: { clientId: string; count: number }[] = [];
-  for (const { clientId } of links) {
-    const alerts = await analytics.generateAlerts(ctx.prisma, clientId);
-    results.push({ clientId, count: alerts.length });
-  }
+  const results = await Promise.all(
+    links.map(async ({ clientId }) => {
+      const alerts = await analytics.generateAlerts(ctx.prisma, clientId);
+      return { clientId, count: alerts.length };
+    })
+  );
   return results;
 });
 
