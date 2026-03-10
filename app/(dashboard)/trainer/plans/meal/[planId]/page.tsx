@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireTrainer } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { MealPlanEditor } from "@/components/trainer/meal-plan-editor";
 
 export default async function MealPlanDetailPage({
@@ -9,12 +9,7 @@ export default async function MealPlanDetailPage({
   params: Promise<{ planId: string }>;
 }) {
   const { planId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!profile || profile.role !== "TRAINER") redirect("/client");
+  const { profile } = await requireTrainer();
 
   const [mealPlan, clients] = await Promise.all([
     prisma.mealPlan.findFirst({

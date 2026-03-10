@@ -1,17 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireTrainer } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { TrainingPlansList } from "@/components/trainer/training-plans-list";
 import { AddTrainingPlanDialog } from "@/components/trainer/add-training-plan-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 
 export default async function TrainingPlansPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!profile || profile.role !== "TRAINER") redirect("/client");
+  const { profile } = await requireTrainer();
 
   const trainingPlans = await prisma.trainingPlan.findMany({
     where: { trainerId: profile.id },

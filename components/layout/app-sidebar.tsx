@@ -47,7 +47,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { createClient } from "@/lib/supabase/client";
+import { signOut } from "next-auth/react";
 
 export const trainerBottomNav = [
   { title: "Dashboard", url: "/trainer", icon: LayoutDashboard },
@@ -95,9 +95,7 @@ export function AppSidebar({ profile }: AppSidebarProps) {
   const hamburgerNav = profile.role === "TRAINER" ? trainerHamburgerNav : clientHamburgerNav;
 
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+    await signOut({ callbackUrl: "/login" });
   }
 
   return (

@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireTrainer } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { TrainingPlanHeader } from "@/components/trainer/training-plan-header";
 import { TrainingPlanDetailClient } from "@/components/trainer/training-plan-detail-client";
 
@@ -10,12 +10,7 @@ export default async function TrainingPlanDetailPage({
   params: Promise<{ planId: string }>;
 }) {
   const { planId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!profile || profile.role !== "TRAINER") redirect("/client");
+  const { profile } = await requireTrainer();
 
   const [trainingPlan, clients] = await Promise.all([
     prisma.trainingPlan.findFirst({

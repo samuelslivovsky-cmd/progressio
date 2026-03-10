@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { registerAction } from "@/app/(auth)/register/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function RegisterForm() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,32 +20,13 @@ export function RegisterForm() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, role },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    const result = await registerAction({ name, email, password, role });
 
-    if (authError || !data.user) {
-      setError(authError?.message ?? "Registrácia zlyhala.");
+    if (result?.error) {
+      setError(result.error);
       setLoading(false);
-      return;
     }
-
-    if (data.session) {
-      await fetch("/api/auth/create-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, role }),
-      });
-      router.push(role === "TRAINER" ? "/trainer" : "/client");
-    } else {
-      router.push("/login?registered=1");
-    }
+    // On success, signIn in the server action handles the redirect
   }
 
   return (

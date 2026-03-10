@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireTrainer } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,13 +13,7 @@ export default async function ClientDetailPage({
   params: Promise<{ clientId: string }>;
 }) {
   const { clientId } = await params;
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!profile || profile.role !== "TRAINER") redirect("/client");
+  const { profile } = await requireTrainer();
 
   const client = await prisma.profile.findFirst({
     where: { id: clientId, trainerRelation: { trainerId: profile.id } },

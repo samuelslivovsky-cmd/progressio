@@ -1,16 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireClient } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { format, startOfDay, subDays } from "date-fns";
 import { ClientDashboardCharts } from "@/components/client/dashboard-charts";
 
 export default async function ClientDashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!profile || profile.role !== "CLIENT") redirect("/trainer");
+  const { profile } = await requireClient();
 
   const today = new Date();
   const todayStart = startOfDay(today);

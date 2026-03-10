@@ -6,11 +6,10 @@ Web app for fitness trainers and their clients, with behavior-based predictions.
 ## Stack
 - **Framework**: Next.js 15 (App Router, Server Components, Server Actions)
 - **Language**: TypeScript
-- **Database**: PostgreSQL via Supabase
+- **Database**: PostgreSQL (local Docker for dev, Supabase-hosted for prod)
 - **ORM**: Prisma
 - **API**: tRPC (end-to-end type safety)
-- **Auth**: Supabase Auth (roles: trainer / client)
-- **Storage**: Supabase Storage (progress photos)
+- **Auth**: NextAuth.js v5 (Credentials provider, JWT sessions, Prisma adapter)
 - **UI**: Tailwind CSS + shadcn/ui
 - **State**: TanStack Query v5
 - **Forms**: React Hook Form + Zod
@@ -22,8 +21,8 @@ Web app for fitness trainers and their clients, with behavior-based predictions.
 - **NO Vercel** — deployed via Coolify (self-hosted). Use `next start` not edge runtime.
 - App Router with Server Components by default; `"use client"` only when necessary.
 - tRPC routers live in `server/routers/`, exposed via `app/api/trpc/[trpc]/route.ts`.
-- Supabase handles auth — middleware checks session and injects user into tRPC context.
-- Two roles: `trainer` and `client`. Role stored in `profiles` table and Supabase JWT claims.
+- NextAuth.js v5 handles auth — middleware checks JWT session and injects user into tRPC context.
+- Two roles: `trainer` and `client`. Role stored in `profiles` table and NextAuth JWT token.
 - Prisma schema is source of truth for DB. Always run `npx prisma generate` after schema changes.
 
 ## Project Structure
@@ -45,9 +44,12 @@ server/
   trpc.ts          # tRPC init + context
   context.ts       # request context (auth session)
 lib/
-  supabase/        # Supabase client helpers (server/client/middleware)
+  auth.ts          # NextAuth.js config (handlers, auth, signIn, signOut)
+  auth-helpers.ts  # requireAuth(), requireTrainer(), requireClient()
   prisma.ts        # Prisma client singleton
   utils.ts         # shared utilities
+types/
+  next-auth.d.ts   # NextAuth type augmentation (session with role, profileId)
 prisma/
   schema.prisma    # DB schema
 ```
@@ -69,11 +71,11 @@ npm start
 
 ## Environment Variables (.env.local)
 ```
-DATABASE_URL=
-DIRECT_URL=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+DATABASE_URL=             # PostgreSQL connection string
+DIRECT_URL=               # Direct PostgreSQL connection (for migrations)
+NEXTAUTH_SECRET=          # Secret for JWT signing (openssl rand -base64 32)
+NEXTAUTH_URL=             # App URL (http://localhost:3000 for dev)
+NEXT_PUBLIC_APP_URL=      # Public app URL
 ```
 
 ## Coding Conventions
