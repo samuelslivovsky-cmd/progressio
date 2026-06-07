@@ -1,11 +1,15 @@
+**/node_modules
+**/.next
+**/.turbo
+**/generated
 .env.local
 .env
-node_modules
-.next
 .git
 .github
 .claude
 README.md
 DEPLOYMENT.md
+dev-plan.md
 docker-compose*.yml
 Dockerfile*
+*.tsbuildinfo

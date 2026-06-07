@@ -1,0 +1,32 @@
+{
+  "name": "@progressio/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
+    "seed": "node prisma/seed-exercises.mjs",
+    "import-exercises": "node prisma/import-exercises-from-api.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "@prisma/client-runtime-utils": "^7.4.2",
+    "dotenv": "^17.3.1",
+    "dotenv-expand": "^12.0.3",
+    "pg": "^8.20.0",
+    "prisma": "^7.4.2"
+  },
+  "devDependencies": {
+    "@progressio/config": "workspace:*",
+    "@types/pg": "^8.18.0",
+    "typescript": "^5"
+  }
+}

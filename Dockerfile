@@ -1,52 +1,53 @@
 FROM node:20-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
 RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
+RUN corepack enable
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Rebuild the source code only when needed
+# ---- Install dependencies (cached on manifest changes) ----
+FROM base AS deps
+WORKDIR /app
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc turbo.json ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/db/package.json ./packages/db/
+COPY packages/config/package.json ./packages/config/
+RUN pnpm install --frozen-lockfile
+
+# ---- Build the web app + a self-contained db package for migrations ----
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate the Prisma client, then build the Next standalone output.
+RUN pnpm --filter @progressio/db generate
+RUN pnpm --filter @progressio/web build
+# Flatten @progressio/db (incl. prisma CLI) into a runnable bundle for migrations.
+RUN pnpm --filter @progressio/db deploy --prod --legacy /db-deploy
 
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
-
-# Production image
+# ---- Production runtime ----
 FROM base AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# Next.js standalone server (server.js lives under apps/web/ in a monorepo).
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
-# Prisma schema + migrations and the CLI/engine so the container can run
-# `prisma migrate deploy` itself on startup (no build context needed on the VPS).
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Self-contained db package (prisma schema, migrations, CLI) for migrate deploy.
+COPY --from=builder --chown=nextjs:nodejs /db-deploy ./packages/db
 
 COPY --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
 
 USER nextjs
-
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]
