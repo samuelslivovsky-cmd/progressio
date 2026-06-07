@@ -1,4 +1,31 @@
+# Development stack: Next.js app (hot reload) + PostgreSQL.
+# Usage:
+#   cp .env.example .env   # adjust values if needed
+#   docker compose up --build
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    command: sh -c "node node_modules/prisma/build/index.js migrate deploy && npm run dev"
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Inside the compose network the DB is reachable as host "db".
+      DATABASE_URL: postgresql://progressio:progressio@db:5432/progressio
+      DIRECT_URL: postgresql://progressio:progressio@db:5432/progressio
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      # Keep container-built node_modules / .next, don't let the host shadow them.
+      - /app/node_modules
+      - /app/.next
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped

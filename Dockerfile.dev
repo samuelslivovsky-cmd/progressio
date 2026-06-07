@@ -1,0 +1,17 @@
+FROM node:20-alpine
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Install dependencies (cached unless package files change).
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Generate the Prisma client into node_modules.
+COPY prisma ./prisma
+RUN npx prisma generate
+
+ENV NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3000
+
+# Source is bind-mounted at runtime (see docker-compose.yml) for hot reload.
+CMD ["npm", "run", "dev"]

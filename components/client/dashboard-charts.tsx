@@ -99,28 +99,31 @@ export function ClientDashboardCharts({
       {/* Stats — mockup: 4 na PC, 2x2 na mobile */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         {statCards.map(({ label, value, accent, href }) => {
-          const Wrapper = href ? Link : "div";
-          const wrapperProps = href ? { href, className: "block" } : {};
-          return (
-            <Wrapper key={label} {...wrapperProps}>
-              <Card className={cn("h-full transition-colors", href && "hover:bg-muted/50")}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3 md:pt-4 px-3 md:px-6">
-                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {label}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-3 pb-3 md:px-6 md:pb-4">
-                  <div
-                    className={cn(
-                      "text-lg font-bold md:text-2xl",
-                      accent && "text-primary"
-                    )}
-                  >
-                    {value}
-                  </div>
-                </CardContent>
-              </Card>
-            </Wrapper>
+          const card = (
+            <Card className={cn("h-full transition-colors", href && "hover:bg-muted/50")}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 pt-3 md:pt-4 px-3 md:px-6">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 md:px-6 md:pb-4">
+                <div
+                  className={cn(
+                    "text-lg font-bold md:text-2xl",
+                    accent && "text-primary"
+                  )}
+                >
+                  {value}
+                </div>
+              </CardContent>
+            </Card>
+          );
+          return href ? (
+            <Link key={label} href={href} className="block">
+              {card}
+            </Link>
+          ) : (
+            <div key={label}>{card}</div>
           );
         })}
       </div>

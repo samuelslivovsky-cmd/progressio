@@ -43,7 +43,7 @@ export function PwaInstallBanner() {
 
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      window.navigator.standalone === true;
 
     if (isStandalone) return;
 
