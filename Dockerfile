@@ -34,10 +34,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
+# Prisma schema + migrations and the CLI/engine so the container can run
+# `prisma migrate deploy` itself on startup (no build context needed on the VPS).
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+COPY --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]

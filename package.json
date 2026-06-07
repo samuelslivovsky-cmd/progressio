@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "import-exercises": "node prisma/import-exercises-from-api.mjs"
   },
   "dependencies": {

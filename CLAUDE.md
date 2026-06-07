@@ -290,8 +290,23 @@ enum AlertType {
 - `server/routers/analytics.ts` — `getClientInsights(clientId)`, `getTrainerDashboard(trainerId)`, `computeRiskScore(clientId)`
 - `server/jobs/nightly.ts` — cron job (2am) computing snapshots for all active clients
 
-## Docker / Coolify Deployment
-- `Dockerfile` at root builds production image.
-- Coolify pulls from Git, builds Docker image, runs `npm start`.
-- Env vars set in Coolify dashboard (not committed to repo).
-- Health check: `GET /api/health`.
+## Docker / Deployment
+
+### Local development (Docker)
+- `docker compose up --build` starts the app (hot reload via `Dockerfile.dev`) + Postgres.
+- App on `http://localhost:3000`, DB exposed on `localhost:5433`.
+- Copy `.env.example` → `.env` first. Migrations run automatically on app start.
+
+### Production — Hetzner VPS (primary)
+- Multi-stage `Dockerfile` builds the standalone production image; its entrypoint
+  (`docker-entrypoint.sh`) runs `prisma migrate deploy` then `node server.js`.
+- CI (`.github/workflows/deploy.yml`) builds the image, pushes to **GHCR**, then
+  SSHes into the VPS and runs `docker compose -f docker-compose.prod.yml pull && up -d`.
+- `docker-compose.prod.yml`: app (from GHCR) + Postgres (named volume) + Caddy (TLS).
+- `.github/workflows/ci.yml` runs lint (non-blocking) + typecheck + build on every PR.
+- Full setup, secrets, and operations: see `DEPLOYMENT.md`.
+- Health check: `GET /api/health` (also pings the DB).
+
+### Coolify (alternative)
+- Coolify can also pull from Git, build the `Dockerfile`, and run the container.
+- Env vars set in the Coolify dashboard (not committed to repo).

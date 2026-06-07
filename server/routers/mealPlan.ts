@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, trainerProcedure, protectedProcedure } from "../trpc";
 
 export const mealPlanRouter = router({
@@ -93,7 +94,7 @@ export const mealPlanRouter = router({
         where: { id: input.mealPlanId, trainerId: ctx.profile.id },
         include: { days: { orderBy: { dayNumber: "desc" }, take: 1 } },
       });
-      if (!plan) throw new Error("Plán neexistuje");
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
       const nextDay = (plan.days[0]?.dayNumber ?? 0) + 1;
       return ctx.prisma.mealPlanDay.create({
         data: { mealPlanId: input.mealPlanId, dayNumber: nextDay },
@@ -112,7 +113,7 @@ export const mealPlanRouter = router({
         where: { id: input.mealPlanDayId },
         include: { mealPlan: true },
       });
-      if (!day || day.mealPlan.trainerId !== ctx.profile.id) throw new Error("Deň neexistuje");
+      if (!day || day.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Deň neexistuje" });
       return ctx.prisma.meal.create({
         data: { mealPlanDayId: input.mealPlanDayId, name: input.name },
       });
@@ -131,7 +132,7 @@ export const mealPlanRouter = router({
         where: { id: input.mealId },
         include: { mealPlanDay: { include: { mealPlan: true } } },
       });
-      if (!meal || meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new Error("Jedlo neexistuje");
+      if (!meal || meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Jedlo neexistuje" });
       return ctx.prisma.mealItem.create({
         data: input,
         include: { food: true },
@@ -145,7 +146,7 @@ export const mealPlanRouter = router({
         where: { id: input.dayId },
         include: { mealPlan: true },
       });
-      if (!day || day.mealPlan.trainerId !== ctx.profile.id) throw new Error("Deň neexistuje");
+      if (!day || day.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Deň neexistuje" });
       return ctx.prisma.mealPlanDay.delete({ where: { id: input.dayId } });
     }),
 
@@ -156,7 +157,7 @@ export const mealPlanRouter = router({
         where: { id: input.mealId },
         include: { mealPlanDay: { include: { mealPlan: true } } },
       });
-      if (!meal || meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new Error("Jedlo neexistuje");
+      if (!meal || meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Jedlo neexistuje" });
       return ctx.prisma.meal.delete({ where: { id: input.mealId } });
     }),
 
@@ -167,7 +168,7 @@ export const mealPlanRouter = router({
         where: { id: input.itemId },
         include: { meal: { include: { mealPlanDay: { include: { mealPlan: true } } } } },
       });
-      if (!item || item.meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new Error("Položka neexistuje");
+      if (!item || item.meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Položka neexistuje" });
       return ctx.prisma.mealItem.delete({ where: { id: input.itemId } });
     }),
 
@@ -178,7 +179,7 @@ export const mealPlanRouter = router({
         where: { id: input.itemId },
         include: { meal: { include: { mealPlanDay: { include: { mealPlan: true } } } } },
       });
-      if (!item || item.meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new Error("Položka neexistuje");
+      if (!item || item.meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Položka neexistuje" });
       return ctx.prisma.mealItem.update({
         where: { id: input.itemId },
         data: { amount: input.amount },
@@ -198,12 +199,12 @@ export const mealPlanRouter = router({
       const plan = await ctx.prisma.mealPlan.findFirst({
         where: { id: input.mealPlanId, trainerId: ctx.profile.id },
       });
-      if (!plan) throw new Error("Plán neexistuje");
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
       const sourceDay = await ctx.prisma.mealPlanDay.findFirst({
         where: { id: input.sourceDayId, mealPlanId: input.mealPlanId },
         include: { meals: { include: { items: true } } },
       });
-      if (!sourceDay) throw new Error("Zdrojový deň neexistuje");
+      if (!sourceDay) throw new TRPCError({ code: "NOT_FOUND", message: "Zdrojový deň neexistuje" });
 
       return ctx.prisma.$transaction(async (tx) => {
         let targetDay = await tx.mealPlanDay.findFirst({
@@ -263,12 +264,12 @@ export const mealPlanRouter = router({
         where: { id: input.mealId },
         include: { mealPlanDay: { include: { mealPlan: true } } },
       });
-      if (!meal || meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new Error("Jedlo neexistuje");
+      if (!meal || meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Jedlo neexistuje" });
       const template = await ctx.prisma.mealTemplate.findFirst({
         where: { id: input.mealTemplateId, trainerId: ctx.profile.id },
         include: { items: true },
       });
-      if (!template) throw new Error("Šablóna jedla neexistuje");
+      if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Šablóna jedla neexistuje" });
       if (template.items.length > 0) {
         await ctx.prisma.mealItem.createMany({
           data: template.items.map((it) => ({
@@ -322,7 +323,7 @@ export const mealPlanRouter = router({
       const plan = await ctx.prisma.mealPlan.findFirst({
         where: { id: input.mealPlanId, trainerId: ctx.profile.id },
       });
-      if (!plan) throw new Error("Plán neexistuje");
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
 
       return ctx.prisma.$transaction(async (tx) => {
         if (input.name !== undefined || input.description !== undefined) {
@@ -399,7 +400,7 @@ export const mealPlanRouter = router({
           },
         },
       });
-      if (!source) throw new Error("Plán neexistuje");
+      if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
 
       return ctx.prisma.$transaction(async (tx) => {
         const newPlan = await tx.mealPlan.create({

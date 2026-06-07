@@ -37,7 +37,7 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
 
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      window.navigator.standalone === true;
     setIsStandalone(standalone);
     if (standalone) return;
 

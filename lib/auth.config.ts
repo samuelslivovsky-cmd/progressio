@@ -32,8 +32,8 @@ export const authConfig = {
       if (user) {
         // profileId and role are set in the full auth.ts authorize callback
         // and passed via the user object
-        token.profileId = (user as any).profileId;
-        token.role = (user as any).role;
+        token.profileId = user.profileId ?? undefined;
+        token.role = user.role ?? undefined;
       }
       return token;
     },
