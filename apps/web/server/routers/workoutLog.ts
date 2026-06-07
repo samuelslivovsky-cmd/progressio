@@ -1,5 +1,21 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, trainerProcedure } from "../trpc";
+import { toNum } from "@/lib/utils";
+
+type RawSet = { weightKg: { toNumber(): number } | number | null };
+
+/** Flatten Decimal `weightKg` in a workout log's nested sets (read boundary). */
+function serializeWorkoutLog<T extends { items: object[] }>(log: T) {
+  return {
+    ...log,
+    items: log.items.map((item) => {
+      const sets = (item as { sets?: RawSet[] }).sets;
+      if (!sets) return item;
+      return { ...item, sets: sets.map((s) => ({ ...s, weightKg: toNum(s.weightKg) })) };
+    }),
+  };
+}
 
 export const workoutLogRouter = router({
   /** Tréner: zoznam workout logov klienta (read-only). */
@@ -10,35 +26,38 @@ export const workoutLogRouter = router({
         where: { trainerId: ctx.profile.id, clientId: input.clientId },
       });
       if (!link) return [];
-      return ctx.prisma.workoutLog.findMany({
+      const logs = await ctx.prisma.workoutLog.findMany({
         where: { profileId: input.clientId },
         orderBy: { date: "desc" },
         take: input.limit,
         include: { items: { include: { exercise: true, sets: true } } },
       });
+      return logs.map(serializeWorkoutLog);
     }),
 
   byDate: protectedProcedure
     .input(z.object({ date: z.string() }))
-    .query(({ ctx, input }) =>
-      ctx.prisma.workoutLog.findFirst({
+    .query(async ({ ctx, input }) => {
+      const log = await ctx.prisma.workoutLog.findFirst({
         where: { profileId: ctx.profile.id, date: new Date(input.date) },
         include: {
           items: { include: { exercise: true, sets: true } },
         },
-      })
-    ),
+      });
+      return log ? serializeWorkoutLog(log) : null;
+    }),
 
   list: protectedProcedure
     .input(z.object({ limit: z.number().default(20) }))
-    .query(({ ctx, input }) =>
-      ctx.prisma.workoutLog.findMany({
+    .query(async ({ ctx, input }) => {
+      const logs = await ctx.prisma.workoutLog.findMany({
         where: { profileId: ctx.profile.id },
         orderBy: { date: "desc" },
         take: input.limit,
         include: { items: { include: { exercise: true } } },
-      })
-    ),
+      });
+      return logs.map(serializeWorkoutLog);
+    }),
 
   create: protectedProcedure
     .input(
@@ -77,6 +96,11 @@ export const workoutLogRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const log = await ctx.prisma.workoutLog.findFirst({
+        where: { id: input.workoutLogId, profileId: ctx.profile.id },
+        select: { id: true },
+      });
+      if (!log) throw new TRPCError({ code: "NOT_FOUND" });
       const item = await ctx.prisma.workoutLogItem.create({
         data: {
           workoutLogId: input.workoutLogId,
@@ -115,7 +139,7 @@ export const workoutLogRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.$transaction(async (tx) => {
+      const result = await ctx.prisma.$transaction(async (tx) => {
         const date = new Date(input.date);
         const log = await tx.workoutLog.create({
           data: {
@@ -151,5 +175,6 @@ export const workoutLogRouter = router({
           },
         });
       });
+      return result ? serializeWorkoutLog(result) : null;
     }),
 });

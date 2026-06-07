@@ -220,8 +220,8 @@ export async function detectPlateau(
     select: { weight: true },
   });
   if (weights.length < 7) return { detected: false };
-  const minW = Math.min(...weights.map((w: { weight: number }) => w.weight));
-  const maxW = Math.max(...weights.map((w: { weight: number }) => w.weight));
+  const minW = Math.min(...weights.map((w) => w.weight.toNumber()));
+  const maxW = Math.max(...weights.map((w) => w.weight.toNumber()));
   const rangeKg = maxW - minW;
   const adherence = precomputedAdherence21 ?? await getWorkoutAdherence(prisma, clientId, 21);
   if (rangeKg < 0.5 && adherence >= 70) {
@@ -320,24 +320,24 @@ export async function predictGoalDate(
     orderBy: { loggedAt: "asc" },
     select: { weight: true, loggedAt: true },
   });
-  const goal = profile?.goalWeight ?? null;
+  const goal = profile?.goalWeight != null ? profile.goalWeight.toNumber() : null;
   if (logs.length < 5) {
     return {
       trendKgPerWeek: 0,
       weeksToGoal: null,
       estimatedDate: null,
-      currentWeight: logs[logs.length - 1]?.weight ?? null,
+      currentWeight: logs[logs.length - 1]?.weight.toNumber() ?? null,
       goalWeight: goal,
       message: "Potrebných viac záznamov váhy na predikciu.",
     };
   }
   const startT = logs[0].loggedAt.getTime();
-  const points = logs.map((l: { loggedAt: Date; weight: number }) => ({
+  const points = logs.map((l) => ({
     x: (l.loggedAt.getTime() - startT) / (7 * 24 * 60 * 60 * 1000),
-    y: l.weight,
+    y: l.weight.toNumber(),
   }));
   const { slope } = linearRegression(points);
-  const currentWeight = logs[logs.length - 1]!.weight;
+  const currentWeight = logs[logs.length - 1]!.weight.toNumber();
   const trendKgPerWeek = slope;
 
   if (goal == null) {

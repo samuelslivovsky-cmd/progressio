@@ -9,7 +9,11 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "worker": "tsx server/jobs/worker.ts",
-    "scheduler": "tsx server/jobs/scheduler.ts"
+    "worker:build": "node scripts/build-worker.mjs",
+    "worker:start": "node dist/worker.cjs",
+    "scheduler": "tsx server/jobs/scheduler.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -32,6 +36,7 @@
     "lucide-react": "^0.577.0",
     "motion": "^12.35.1",
     "next": "16.2.7",
+    "p-limit": "^7.3.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.2",
@@ -51,10 +56,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv-cli": "^8.0.0",
+    "esbuild": "^0.28.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "ioredis-mock": "^8.13.1",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.8"
   }
 }

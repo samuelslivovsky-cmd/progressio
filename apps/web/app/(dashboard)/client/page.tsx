@@ -2,6 +2,7 @@ import { requireClient } from "@/lib/auth-helpers";
 import { prisma } from "@progressio/db";
 import { format, startOfDay, subDays } from "date-fns";
 import { ClientDashboardCharts } from "@/components/client/dashboard-charts";
+import { toNum } from "@/lib/utils";
 
 export default async function ClientDashboardPage() {
   const { profile } = await requireClient();
@@ -81,8 +82,8 @@ export default async function ClientDashboardPage() {
   }
 
   const weightLogsForChart = weightLogsLast30
-    .map((w: { weight: number; unit: string; loggedAt: Date }) => ({
-      weight: w.weight,
+    .map((w) => ({
+      weight: toNum(w.weight),
       unit: w.unit,
       loggedAt: w.loggedAt.toISOString(),
     }))
@@ -93,12 +94,14 @@ export default async function ClientDashboardPage() {
       : null;
 
   const todayFoodLogSingle = todayFoodLog?.[0];
-  type FoodLogItemWithFood = { food: { calories: number; servingSize?: number } | null; amount: number };
+  type FoodLogItemWithFood = {
+    food: { calories: { toNumber(): number } | number; servingSize?: { toNumber(): number } | number } | null;
+    amount: { toNumber(): number } | number;
+  };
+  const itemKcal = (item: FoodLogItemWithFood) =>
+    item.food ? (toNum(item.food.calories) * toNum(item.amount)) / (toNum(item.food.servingSize) || 100) : 0;
   const totalCalories =
-    todayFoodLogSingle?.items.reduce(
-      (sum: number, item: FoodLogItemWithFood) => sum + (item.food ? (item.food.calories * item.amount) / (item.food.servingSize || 100) : 0),
-      0
-    ) ?? 0;
+    todayFoodLogSingle?.items.reduce((sum: number, item: FoodLogItemWithFood) => sum + itemKcal(item), 0) ?? 0;
 
   const last7DaysCalories = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(today, 6 - i);
@@ -106,10 +109,7 @@ export default async function ClientDashboardPage() {
     const log = foodLogsLast7Days.find(
       (f: { date: Date }) => format(f.date, "yyyy-MM-dd") === dateStr
     );
-    const calories = log?.items.reduce(
-      (s: number, item: FoodLogItemWithFood) => s + (item.food ? (item.food.calories * item.amount) / (item.food.servingSize || 100) : 0),
-      0
-    ) ?? 0;
+    const calories = log?.items.reduce((s: number, item: FoodLogItemWithFood) => s + itemKcal(item), 0) ?? 0;
     return {
       date: dateStr,
       label: format(d, "EEE d.M."),
@@ -128,7 +128,7 @@ export default async function ClientDashboardPage() {
         lastWeight={
           lastWeight
             ? {
-                weight: lastWeight.weight,
+                weight: toNum(lastWeight.weight),
                 unit: lastWeight.unit,
                 loggedAt: lastWeight.loggedAt.toISOString(),
               }
@@ -137,7 +137,7 @@ export default async function ClientDashboardPage() {
         lastMeasurement={
           lastMeasurement
             ? {
-                waist: lastMeasurement.waist,
+                waist: toNum(lastMeasurement.waist),
                 loggedAt: lastMeasurement.loggedAt.toISOString(),
               }
             : null
@@ -160,8 +160,8 @@ export default async function ClientDashboardPage() {
             : null
         }
         streakDays={streakDays}
-        weightLogs={weightLogsLast14.map((w: { weight: number; unit: string; loggedAt: Date }) => ({
-          weight: w.weight,
+        weightLogs={weightLogsLast14.map((w) => ({
+          weight: toNum(w.weight),
           unit: w.unit,
           loggedAt: w.loggedAt.toISOString(),
         }))}

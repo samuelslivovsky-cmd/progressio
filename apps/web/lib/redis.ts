@@ -11,11 +11,16 @@ function createRedisClient(): Redis {
   if (!url) {
     throw new Error("Missing REDIS_URL for Redis connection.");
   }
-  return new Redis(url, {
+  const client = new Redis(url, {
     // Fail fast instead of buffering commands forever if Redis is down.
     maxRetriesPerRequest: 3,
     lazyConnect: false,
   });
+  // Without an "error" listener, ioredis emits an unhandled 'error' event that
+  // crashes the Node process whenever the connection drops. Log and keep going;
+  // individual commands still reject so callers can fail-soft/fail-closed.
+  client.on("error", (e: Error) => console.error("[redis]", e.message));
+  return client;
 }
 
 export const redis = globalForRedis.redis ?? createRedisClient();

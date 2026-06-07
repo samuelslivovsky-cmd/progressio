@@ -114,24 +114,23 @@ export function MealTemplatesList() {
       ) : (
         <div className="space-y-3">
           {filteredTemplates.map((t) => {
-            type TemplateItem = { amount: number; food: { servingSize?: number; calories: number; protein: number; carbs: number; fat: number } };
             const totalCal = t.items.reduce(
-              (sum: number, it: TemplateItem) =>
+              (sum, it) =>
                 sum + (it.amount / (it.food.servingSize || 100)) * it.food.calories,
               0
             );
             const totalP = t.items.reduce(
-              (sum: number, it: TemplateItem) =>
+              (sum, it) =>
                 sum + (it.amount / (it.food.servingSize || 100)) * it.food.protein,
               0
             );
             const totalS = t.items.reduce(
-              (sum: number, it: TemplateItem) =>
+              (sum, it) =>
                 sum + (it.amount / (it.food.servingSize || 100)) * it.food.carbs,
               0
             );
             const totalT = t.items.reduce(
-              (sum: number, it: TemplateItem) =>
+              (sum, it) =>
                 sum + (it.amount / (it.food.servingSize || 100)) * it.food.fat,
               0
             );

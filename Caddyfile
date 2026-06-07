@@ -2,5 +2,11 @@
 # APP_DOMAIN is injected from the environment (see docker-compose.prod.yml / .env).
 {$APP_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy app:3000
+	reverse_proxy app:3000 {
+		# Overwrite any client-sent X-Real-IP with the real peer address so the
+		# app can trust it (see lib/auth/ip.ts). trusted_proxies ensures Caddy
+		# only honors forwarded headers from private-range upstreams.
+		header_up X-Real-IP {remote_host}
+		trusted_proxies private_ranges
+	}
 }

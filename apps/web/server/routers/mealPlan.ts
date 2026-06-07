@@ -1,6 +1,43 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, trainerProcedure, protectedProcedure } from "../trpc";
+import { serializeFood, serializeMealItem } from "@/lib/serializers";
+
+type RawMealItem = Parameters<typeof serializeMealItem>[0];
+
+// Generic spreads over a same-named key produce an unusable intersection
+// (`Decimal & number`), so each level uses `Omit` to fully replace the
+// serialized key. Inner element types are derived via indexed access so a
+// single inferred type param keeps the full original shape (ids, names, …).
+type SerializedMeal<M extends { items: RawMealItem[] }> = Omit<M, "items"> & {
+  items: ReturnType<typeof serializeMealItem<M["items"][number]>>[];
+};
+
+type SerializedDay<D extends { meals: { items: RawMealItem[] }[] }> = Omit<
+  D,
+  "meals"
+> & { meals: SerializedMeal<D["meals"][number]>[] };
+
+type SerializedPlan<P extends { days: { meals: { items: RawMealItem[] }[] }[] }> =
+  Omit<P, "days"> & { days: SerializedDay<P["days"][number]>[] };
+
+/** Flatten Decimal columns inside a Meal's items (with nested Food). */
+function serializeMeal<M extends { items: RawMealItem[] }>(meal: M): SerializedMeal<M> {
+  return { ...meal, items: meal.items.map((it) => serializeMealItem(it)) } as SerializedMeal<M>;
+}
+
+/** Flatten Decimal columns inside a full MealPlan (days → meals → items → food). */
+function serializeMealPlan<P extends { days: { meals: { items: RawMealItem[] }[] }[] }>(
+  plan: P,
+): SerializedPlan<P> {
+  return {
+    ...plan,
+    days: plan.days.map((day) => ({
+      ...day,
+      meals: day.meals.map((meal) => serializeMeal(meal)),
+    })),
+  } as SerializedPlan<P>;
+}
 
 export const mealPlanRouter = router({
   list: trainerProcedure.query(({ ctx }) =>
@@ -12,17 +49,25 @@ export const mealPlanRouter = router({
 
   detail: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .query(({ ctx, input }) =>
-      ctx.prisma.mealPlan.findUnique({
-        where: { id: input.id },
+    .query(async ({ ctx, input }) => {
+      const plan = await ctx.prisma.mealPlan.findFirst({
+        where: {
+          id: input.id,
+          OR: [
+            { trainerId: ctx.profile.id },
+            { assignments: { some: { clientId: ctx.profile.id } } },
+          ],
+        },
         include: {
           days: {
             orderBy: { dayNumber: "asc" },
             include: { meals: { include: { items: { include: { food: true } } } } },
           },
         },
-      })
-    ),
+      });
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND" });
+      return serializeMealPlan(plan);
+    }),
 
   create: trainerProcedure
     .input(
@@ -48,12 +93,18 @@ export const mealPlanRouter = router({
         note: z.string().optional(),
       })
     )
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.mealPlanAssignment.create({ data: input })
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const [plan, link] = await Promise.all([
+        ctx.prisma.mealPlan.findFirst({ where: { id: input.mealPlanId, trainerId: ctx.profile.id } }),
+        ctx.prisma.clientTrainer.findFirst({ where: { clientId: input.clientId, trainerId: ctx.profile.id } }),
+      ]);
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
+      if (!link) throw new TRPCError({ code: "FORBIDDEN", message: "Klient nie je váš" });
+      return ctx.prisma.mealPlanAssignment.create({ data: input });
+    }),
 
-  myAssigned: protectedProcedure.query(({ ctx }) =>
-    ctx.prisma.mealPlanAssignment.findMany({
+  myAssigned: protectedProcedure.query(async ({ ctx }) => {
+    const assignments = await ctx.prisma.mealPlanAssignment.findMany({
       where: { clientId: ctx.profile.id },
       orderBy: { startDate: "desc" },
       include: {
@@ -66,8 +117,9 @@ export const mealPlanRouter = router({
           },
         },
       },
-    })
-  ),
+    });
+    return assignments.map((a) => ({ ...a, mealPlan: serializeMealPlan(a.mealPlan) }));
+  }),
 
   update: trainerProcedure
     .input(
@@ -133,10 +185,11 @@ export const mealPlanRouter = router({
         include: { mealPlanDay: { include: { mealPlan: true } } },
       });
       if (!meal || meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Jedlo neexistuje" });
-      return ctx.prisma.mealItem.create({
+      const item = await ctx.prisma.mealItem.create({
         data: input,
         include: { food: true },
       });
+      return serializeMealItem(item);
     }),
 
   deleteDay: trainerProcedure
@@ -180,11 +233,12 @@ export const mealPlanRouter = router({
         include: { meal: { include: { mealPlanDay: { include: { mealPlan: true } } } } },
       });
       if (!item || item.meal.mealPlanDay.mealPlan.trainerId !== ctx.profile.id) throw new TRPCError({ code: "NOT_FOUND", message: "Položka neexistuje" });
-      return ctx.prisma.mealItem.update({
+      const updated = await ctx.prisma.mealItem.update({
         where: { id: input.itemId },
         data: { amount: input.amount },
         include: { food: true },
       });
+      return serializeMealItem(updated);
     }),
 
   copyDay: trainerProcedure
@@ -206,7 +260,7 @@ export const mealPlanRouter = router({
       });
       if (!sourceDay) throw new TRPCError({ code: "NOT_FOUND", message: "Zdrojový deň neexistuje" });
 
-      return ctx.prisma.$transaction(async (tx) => {
+      const result = await ctx.prisma.$transaction(async (tx) => {
         let targetDay = await tx.mealPlanDay.findFirst({
           where: { mealPlanId: input.mealPlanId, dayNumber: input.targetDayNumber },
         });
@@ -250,6 +304,7 @@ export const mealPlanRouter = router({
           },
         });
       });
+      return serializeMealPlan(result);
     }),
 
   addTemplateToMeal: trainerProcedure
@@ -279,20 +334,22 @@ export const mealPlanRouter = router({
           })),
         });
       }
-      return ctx.prisma.meal.findUniqueOrThrow({
+      const updatedMeal = await ctx.prisma.meal.findUniqueOrThrow({
         where: { id: input.mealId },
         include: { items: { include: { food: true } } },
       });
+      return serializeMeal(updatedMeal);
     }),
 
   searchFoods: trainerProcedure
     .input(z.object({ query: z.string() }))
     .query(async ({ ctx, input }) => {
       if (input.query.length < 1) return [];
-      return ctx.prisma.food.findMany({
+      const foods = await ctx.prisma.food.findMany({
         where: { name: { contains: input.query, mode: "insensitive" } },
         take: 20,
       });
+      return foods.map(serializeFood);
     }),
 
   saveContent: trainerProcedure
@@ -325,7 +382,7 @@ export const mealPlanRouter = router({
       });
       if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
 
-      return ctx.prisma.$transaction(async (tx) => {
+      const saved = await ctx.prisma.$transaction(async (tx) => {
         if (input.name !== undefined || input.description !== undefined) {
           await tx.mealPlan.update({
             where: { id: input.mealPlanId },
@@ -386,6 +443,7 @@ export const mealPlanRouter = router({
           },
         });
       });
+      return serializeMealPlan(saved);
     }),
 
   duplicate: trainerProcedure
@@ -402,7 +460,7 @@ export const mealPlanRouter = router({
       });
       if (!source) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
 
-      return ctx.prisma.$transaction(async (tx) => {
+      const duplicated = await ctx.prisma.$transaction(async (tx) => {
         const newPlan = await tx.mealPlan.create({
           data: {
             trainerId: ctx.profile.id,
@@ -440,5 +498,6 @@ export const mealPlanRouter = router({
           },
         });
       });
+      return serializeMealPlan(duplicated);
     }),
 });

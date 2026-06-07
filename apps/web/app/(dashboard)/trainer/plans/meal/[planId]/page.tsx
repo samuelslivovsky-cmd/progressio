@@ -2,6 +2,7 @@ import { requireTrainer } from "@/lib/auth-helpers";
 import { prisma } from "@progressio/db";
 import { notFound } from "next/navigation";
 import { MealPlanEditor } from "@/components/trainer/meal-plan-editor";
+import { serializeMealItem } from "@/lib/serializers";
 
 export default async function MealPlanDetailPage({
   params,
@@ -37,9 +38,20 @@ export default async function MealPlanDetailPage({
 
   if (!mealPlan) notFound();
 
+  const serializedPlan = {
+    ...mealPlan,
+    days: mealPlan.days.map((day) => ({
+      ...day,
+      meals: day.meals.map((meal) => ({
+        ...meal,
+        items: meal.items.map(serializeMealItem),
+      })),
+    })),
+  };
+
   return (
     <MealPlanEditor
-      mealPlan={mealPlan}
+      mealPlan={serializedPlan}
       assignmentCount={mealPlan._count.assignments}
       clients={clients}
     />

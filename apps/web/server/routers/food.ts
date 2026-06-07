@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, trainerProcedure } from "../trpc";
+import { serializeFood } from "@/lib/serializers";
 
 export const foodRouter = router({
   /** Klient aj tréner môžu vytvoriť jednoduchú potravinu (názov + gramáž). */
@@ -10,8 +11,8 @@ export const foodRouter = router({
         servingSize: z.number().positive().default(100),
       })
     )
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.food.create({
+    .mutation(async ({ ctx, input }) => {
+      const food = await ctx.prisma.food.create({
         data: {
           name: input.name.trim(),
           calories: 0,
@@ -22,8 +23,9 @@ export const foodRouter = router({
           servingSize: input.servingSize,
           unit: "g",
         },
-      })
-    ),
+      });
+      return serializeFood(food);
+    }),
 
   /** Klient aj tréner môžu vytvoriť plnú potravinu (výživové údaje). */
   create: protectedProcedure
@@ -47,7 +49,7 @@ export const foodRouter = router({
         });
         if (existing) throw new Error("Potravina s týmto čiarovým kódom už existuje.");
       }
-      return ctx.prisma.food.create({
+      const food = await ctx.prisma.food.create({
         data: {
           name: input.name.trim(),
           barcode: input.barcode?.trim() || null,
@@ -60,5 +62,6 @@ export const foodRouter = router({
           fat: input.fat ?? 0,
         },
       });
+      return serializeFood(food);
     }),
 });

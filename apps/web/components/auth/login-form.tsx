@@ -19,23 +19,32 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (!res.ok) {
-      setError("Nesprávny email alebo heslo.");
+      if (!res.ok) {
+        setError(
+          res.status === 401
+            ? "Nesprávny email alebo heslo."
+            : "Prihlásenie zlyhalo. Skús to znova o chvíľu."
+        );
+        return;
+      }
+
+      const data = (await res.json()) as { user?: { role?: string } };
+      const role = data.user?.role;
+      if (role === "TRAINER") router.push("/trainer");
+      else if (role === "CLIENT") router.push("/client");
+      else router.push("/dashboard");
+    } catch {
+      setError("Nepodarilo sa pripojiť k serveru. Skontroluj pripojenie.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const data = (await res.json()) as { user?: { role?: string } };
-    const role = data.user?.role;
-    if (role === "TRAINER") router.push("/trainer");
-    else if (role === "CLIENT") router.push("/client");
-    else router.push("/dashboard");
   }
 
   return (

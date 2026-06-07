@@ -1,16 +1,8 @@
-import { z } from "zod";
 import { registerUser } from "@/lib/auth/register";
-import { requestMeta } from "../_shared";
+import { requestMeta, withRedisFailClosed, SERVICE_UNAVAILABLE, serviceUnavailableResponse } from "../_shared";
 import { rateLimitByIp, tooManyResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-
-const registerSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(1),
-  role: z.enum(["TRAINER", "CLIENT"]),
-});
 
 export async function POST(req: Request) {
   // Rate limit by IP: 5 / 3600s.
@@ -28,13 +20,11 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const parsed = registerSchema.safeParse(body);
-  if (!parsed.success) {
-    return Response.json({ error: "Invalid request body." }, { status: 400 });
-  }
-
+  // Validation now lives inside registerUser (shared registerSchema). Pass the
+  // raw JSON through — registerUser normalizes the email and enforces policy.
   const meta = requestMeta(req);
-  const result = await registerUser(parsed.data, meta);
+  const result = await withRedisFailClosed(() => registerUser(body, meta));
+  if (result === SERVICE_UNAVAILABLE) return serviceUnavailableResponse();
   if (!result.ok) {
     return Response.json({ error: result.error }, { status: 409 });
   }

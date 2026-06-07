@@ -11,8 +11,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { SearchInput } from "@/components/shared/search-input";
 import type { Profile, WeightLog, Measurement, TrainingPlanAssignment, MealPlanAssignment, TrainingPlan, MealPlan } from "@progressio/db";
 
+// Decimal columns are flattened to `number` at the read boundary before
+// reaching this client component (Prisma `Decimal` does not serialize).
+type SerializedWeightLog = Omit<WeightLog, "weight"> & { weight: number };
+
 type ClientWithData = Profile & {
-  weightLogs: WeightLog[];
+  weightLogs: SerializedWeightLog[];
   measurements: Measurement[];
   assignedTrainingPlan: (TrainingPlanAssignment & { trainingPlan: TrainingPlan })[];
   assignedMealPlan: (MealPlanAssignment & { mealPlan: MealPlan })[];

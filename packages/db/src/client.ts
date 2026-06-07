@@ -6,9 +6,11 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+  // Runtime prefers the pooled DATABASE_URL; DIRECT_URL is a fallback (and is
+  // used independently by prisma.config for migrations).
+  const connectionString = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
   if (!connectionString) {
-    throw new Error("Missing DIRECT_URL or DATABASE_URL for Prisma connection.");
+    throw new Error("Missing DATABASE_URL or DIRECT_URL for Prisma connection.");
   }
   const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({

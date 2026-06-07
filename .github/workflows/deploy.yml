@@ -59,16 +59,34 @@ jobs:
             cd /opt/progressio
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export IMAGE_TAG=${{ github.sha }}
+
+            # --- Pre-deploy DB backup (before pulling/migrating anything) ---
+            set -a; . ./.env; set +a
+            mkdir -p backups
+            BACKUP="backups/pre-deploy_$(date +%F_%H%M%S).sql.gz"
+            docker compose -f docker-compose.prod.yml exec -T db \
+              pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists \
+              | gzip > "$BACKUP"
+            if [ ! -s "$BACKUP" ]; then
+              echo "Backup $BACKUP is empty — aborting deploy"; exit 1
+            fi
+            echo "Backup written: $BACKUP ($(du -h "$BACKUP" | cut -f1))"
+            # Keep the most recent 14 backups, prune the rest.
+            ls -1t backups/pre-deploy_*.sql.gz 2>/dev/null | tail -n +15 | xargs -r rm -f
+
+            # --- Pull new image, run migrations once, then roll out ---
             docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml run --rm migrate
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
 
       - name: Smoke test
         run: |
           for i in $(seq 1 10); do
-            if curl -fsS "https://${{ secrets.APP_DOMAIN }}/api/health"; then
-              echo "\nHealth check passed"; exit 0
+            BODY=$(curl -fsS "https://${{ secrets.APP_DOMAIN }}/api/health" || true)
+            if echo "$BODY" | grep -q '"status":"ok"'; then
+              echo "Health check passed: $BODY"; exit 0
             fi
-            echo "Attempt $i failed, retrying in 10s..."; sleep 10
+            echo "Attempt $i failed (got: ${BODY:-no response}), retrying in 10s..."; sleep 10
           done
           echo "Health check failed after retries"; exit 1

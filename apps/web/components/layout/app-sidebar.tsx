@@ -95,6 +95,16 @@ export function AppSidebar({ profile }: AppSidebarProps) {
 
   async function handleSignOut() {
     await fetch("/api/auth/logout", { method: "POST" });
+    // Purge any cached authed HTML from the service worker before redirecting,
+    // so the next user on this device can't see stale PII.
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        reg.active?.postMessage({ type: "CLEAR_CACHE" });
+      } catch {
+        // SW not ready / unsupported — ignore.
+      }
+    }
     router.push("/login");
   }
 

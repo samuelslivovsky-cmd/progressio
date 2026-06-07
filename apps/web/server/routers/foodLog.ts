@@ -1,13 +1,25 @@
 import { z } from "zod";
 import { router, protectedProcedure, trainerProcedure } from "../trpc";
+import { serializeFood, serializeFoodLogItem } from "@/lib/serializers";
 
 const mealTypeEnum = z.enum(["breakfast", "desiata", "lunch", "olovrant", "dinner"]);
+
+type RawFoodLogItem = Parameters<typeof serializeFoodLogItem>[0];
+
+/** FoodLog with its items: flatten Decimal `amount` + nested Food columns. */
+function serializeFoodLog<T extends { items: RawFoodLogItem[] }>(
+  log: T,
+): Omit<T, "items"> & {
+  items: ReturnType<typeof serializeFoodLogItem<T["items"][number]>>[];
+} {
+  return { ...log, items: log.items.map((it) => serializeFoodLogItem(it)) };
+}
 
 export const foodLogRouter = router({
   byDate: protectedProcedure
     .input(z.object({ date: z.string() })) // YYYY-MM-DD
-    .query(({ ctx, input }) =>
-      ctx.prisma.foodLog.findFirst({
+    .query(async ({ ctx, input }) => {
+      const log = await ctx.prisma.foodLog.findFirst({
         where: {
           profileId: ctx.profile.id,
           date: new Date(input.date),
@@ -15,8 +27,9 @@ export const foodLogRouter = router({
         include: {
           items: { include: { food: true } },
         },
-      })
-    ),
+      });
+      return log ? serializeFoodLog(log) : null;
+    }),
 
   /** Tréner: zoznam potravy klienta (posledné záznamy, read-only). */
   listForClient: trainerProcedure
@@ -26,12 +39,13 @@ export const foodLogRouter = router({
         where: { trainerId: ctx.profile.id, clientId: input.clientId },
       });
       if (!link) return [];
-      return ctx.prisma.foodLog.findMany({
+      const logs = await ctx.prisma.foodLog.findMany({
         where: { profileId: input.clientId },
         orderBy: { date: "desc" },
         take: input.limit,
         include: { items: { include: { food: true } } },
       });
+      return logs.map(serializeFoodLog);
     }),
 
   /** Trenér: záznam stravy klienta podľa dátumu (iba pre svojich klientov). */
@@ -42,7 +56,7 @@ export const foodLogRouter = router({
         where: { trainerId: ctx.profile.id, clientId: input.clientId },
       });
       if (!link) return null;
-      return ctx.prisma.foodLog.findFirst({
+      const log = await ctx.prisma.foodLog.findFirst({
         where: {
           profileId: input.clientId,
           date: new Date(input.date),
@@ -51,6 +65,7 @@ export const foodLogRouter = router({
           items: { include: { food: true } },
         },
       });
+      return log ? serializeFoodLog(log) : null;
     }),
 
   addItem: protectedProcedure
@@ -72,7 +87,7 @@ export const foodLogRouter = router({
         update: {},
       });
 
-      return ctx.prisma.foodLogItem.create({
+      const item = await ctx.prisma.foodLogItem.create({
         data: {
           foodLogId: log.id,
           foodId: input.foodId,
@@ -81,6 +96,7 @@ export const foodLogRouter = router({
         },
         include: { food: true },
       });
+      return serializeFoodLogItem(item);
     }),
 
   /** Pridanie vlastného jedla len s názvom + gramáž (bez vytvárania Food záznamu). */
@@ -103,7 +119,7 @@ export const foodLogRouter = router({
         update: {},
       });
 
-      return ctx.prisma.foodLogItem.create({
+      const item = await ctx.prisma.foodLogItem.create({
         data: {
           foodLogId: log.id,
           customName: input.customName.trim(),
@@ -111,6 +127,7 @@ export const foodLogRouter = router({
           mealType: input.mealType,
         },
       });
+      return serializeFoodLogItem({ ...item, food: null });
     }),
 
   removeItem: protectedProcedure
@@ -126,10 +143,11 @@ export const foodLogRouter = router({
 
   searchFoods: protectedProcedure
     .input(z.object({ query: z.string().min(1) }))
-    .query(({ ctx, input }) =>
-      ctx.prisma.food.findMany({
+    .query(async ({ ctx, input }) => {
+      const foods = await ctx.prisma.food.findMany({
         where: { name: { contains: input.query, mode: "insensitive" } },
         take: 20,
-      })
-    ),
+      });
+      return foods.map(serializeFood);
+    }),
 });

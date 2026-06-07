@@ -1,16 +1,31 @@
 import { z } from "zod";
 import { router, trainerProcedure } from "../trpc";
+import { serializeMealItem } from "@/lib/serializers";
+
+type RawMealItem = Parameters<typeof serializeMealItem>[0];
+
+/**
+ * Flatten Decimal columns in a MealTemplate's items (with nested Food).
+ * Uses `Omit` (not a plain spread) so the new `items` type fully replaces the
+ * original `Decimal`-typed one instead of intersecting with it.
+ */
+function serializeTemplate<T extends { items: RawMealItem[] }>(
+  tpl: T,
+): Omit<T, "items"> & { items: ReturnType<typeof serializeMealItem<T["items"][number]>>[] } {
+  return { ...tpl, items: tpl.items.map((it) => serializeMealItem(it)) };
+}
 
 export const mealTemplateRouter = router({
-  list: trainerProcedure.query(({ ctx }) =>
-    ctx.prisma.mealTemplate.findMany({
+  list: trainerProcedure.query(async ({ ctx }) => {
+    const templates = await ctx.prisma.mealTemplate.findMany({
       where: { trainerId: ctx.profile.id },
       orderBy: { createdAt: "desc" },
       include: {
         items: { include: { food: true } },
       },
-    })
-  ),
+    });
+    return templates.map(serializeTemplate);
+  }),
 
   create: trainerProcedure
     .input(z.object({ name: z.string().min(1) }))
@@ -43,10 +58,11 @@ export const mealTemplateRouter = router({
         where: { id: input.mealTemplateId, trainerId: ctx.profile.id },
       });
       if (!template) throw new Error("Šablóna neexistuje");
-      return ctx.prisma.mealTemplateItem.create({
+      const item = await ctx.prisma.mealTemplateItem.create({
         data: input,
         include: { food: true },
       });
+      return serializeMealItem(item);
     }),
 
   removeItem: trainerProcedure

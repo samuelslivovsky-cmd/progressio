@@ -3,14 +3,8 @@ import { hashPassword } from "@/lib/auth/password";
 import { signAccessToken } from "@/lib/auth/tokens";
 import { issueRefresh } from "@/lib/auth/token-store";
 import { setAuthCookies } from "@/lib/auth/cookies";
+import { registerSchema } from "@/lib/auth/validation";
 import type { AuthUser } from "@/lib/auth/config";
-
-export type RegisterInput = {
-  name: string;
-  email: string;
-  password: string;
-  role: "TRAINER" | "CLIENT";
-};
 
 export type RegisterResult =
   | { ok: true; user: AuthUser }
@@ -19,25 +13,36 @@ export type RegisterResult =
 /**
  * Create a new User + Profile, issue auth tokens, and set the auth cookies.
  * Shared by the register server action and the POST /api/auth/register route.
- * Returns `{ ok: false }` (no cookies set) if the email is already taken.
+ *
+ * Input is validated INTERNALLY with `registerSchema` (the same schema the API
+ * route uses), so this function can never be called with unvalidated data — the
+ * email is normalized (trimmed + lowercased) and the password policy enforced
+ * here regardless of caller. Returns `{ ok: false }` (no cookies set) on
+ * invalid input or if the email is already taken.
  */
 export async function registerUser(
-  input: RegisterInput,
+  input: unknown,
   meta?: { userAgent?: string | null; ip?: string | null },
 ): Promise<RegisterResult> {
+  const parsed = registerSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Neplatné údaje." };
+  }
+  const { name, email, password, role } = parsed.data;
+
   const existing = await prisma.user.findUnique({
-    where: { email: input.email },
+    where: { email },
   });
   if (existing) {
     return { ok: false, error: "Účet s týmto emailom už existuje." };
   }
 
-  const hashedPassword = await hashPassword(input.password);
+  const hashedPassword = await hashPassword(password);
 
   const user = await prisma.user.create({
     data: {
-      name: input.name,
-      email: input.email,
+      name,
+      email,
       password: hashedPassword,
     },
   });
@@ -45,9 +50,9 @@ export async function registerUser(
   const profile = await prisma.profile.create({
     data: {
       userId: user.id,
-      name: input.name,
-      email: input.email,
-      role: input.role === "TRAINER" ? Role.TRAINER : Role.CLIENT,
+      name,
+      email,
+      role: role === "TRAINER" ? Role.TRAINER : Role.CLIENT,
     },
   });
 

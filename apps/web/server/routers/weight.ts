@@ -1,5 +1,13 @@
 import { z } from "zod";
 import { router, protectedProcedure, trainerProcedure } from "../trpc";
+import { toNum } from "@/lib/utils";
+
+/** Flatten a WeightLog's Decimal `weight` to a plain number (read boundary). */
+function serializeWeightLog<T extends { weight: { toNumber(): number } | number }>(
+  log: T,
+): Omit<T, "weight"> & { weight: number } {
+  return { ...log, weight: toNum(log.weight) };
+}
 
 export const weightRouter = router({
   /** Tréner: zoznam váh klienta (read-only). */
@@ -10,22 +18,24 @@ export const weightRouter = router({
         where: { trainerId: ctx.profile.id, clientId: input.clientId },
       });
       if (!link) return [];
-      return ctx.prisma.weightLog.findMany({
+      const logs = await ctx.prisma.weightLog.findMany({
         where: { profileId: input.clientId },
         orderBy: { loggedAt: "desc" },
         take: input.limit,
       });
+      return logs.map(serializeWeightLog);
     }),
 
   list: protectedProcedure
     .input(z.object({ limit: z.number().min(1).max(100).default(30) }))
-    .query(({ ctx, input }) =>
-      ctx.prisma.weightLog.findMany({
+    .query(async ({ ctx, input }) => {
+      const logs = await ctx.prisma.weightLog.findMany({
         where: { profileId: ctx.profile.id },
         orderBy: { loggedAt: "desc" },
         take: input.limit,
-      })
-    ),
+      });
+      return logs.map(serializeWeightLog);
+    }),
 
   add: protectedProcedure
     .input(
@@ -50,9 +60,10 @@ export const weightRouter = router({
 
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.weightLog.delete({
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.weightLog.deleteMany({
         where: { id: input.id, profileId: ctx.profile.id },
-      })
-    ),
+      });
+      return { ok: true };
+    }),
 });

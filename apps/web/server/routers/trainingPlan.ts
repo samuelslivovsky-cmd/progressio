@@ -12,9 +12,15 @@ export const trainingPlanRouter = router({
 
   detail: protectedProcedure
     .input(z.object({ id: z.string() }))
-    .query(({ ctx, input }) =>
-      ctx.prisma.trainingPlan.findUnique({
-        where: { id: input.id },
+    .query(async ({ ctx, input }) => {
+      const plan = await ctx.prisma.trainingPlan.findFirst({
+        where: {
+          id: input.id,
+          OR: [
+            { trainerId: ctx.profile.id },
+            { assignments: { some: { clientId: ctx.profile.id } } },
+          ],
+        },
         include: {
           days: {
             orderBy: { dayNumber: "asc" },
@@ -26,8 +32,10 @@ export const trainingPlanRouter = router({
             },
           },
         },
-      })
-    ),
+      });
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND" });
+      return plan;
+    }),
 
   create: trainerProcedure
     .input(
@@ -263,6 +271,8 @@ export const trainingPlanRouter = router({
           equipment: input.equipment?.trim() || null,
           videoUrl: (input.videoUrl && input.videoUrl !== "") ? input.videoUrl : null,
           externalId: null,
+          // Mark ownership so only the creating trainer can edit it later.
+          createdById: ctx.profile.id,
         },
       });
     }),
@@ -313,6 +323,13 @@ export const trainingPlanRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      // Only self-created exercises are editable. Global/seeded rows have
+      // createdById = null and are intentionally read-only.
+      const exercise = await ctx.prisma.exercise.findFirst({
+        where: { id, createdById: ctx.profile.id },
+        select: { id: true },
+      });
+      if (!exercise) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.prisma.exercise.update({
         where: { id },
         data: data as { name?: string; description?: string | null },
@@ -340,9 +357,15 @@ export const trainingPlanRouter = router({
         endDate: z.date().optional(),
       })
     )
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.trainingPlanAssignment.create({ data: input })
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const [plan, link] = await Promise.all([
+        ctx.prisma.trainingPlan.findFirst({ where: { id: input.trainingPlanId, trainerId: ctx.profile.id } }),
+        ctx.prisma.clientTrainer.findFirst({ where: { clientId: input.clientId, trainerId: ctx.profile.id } }),
+      ]);
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plán neexistuje" });
+      if (!link) throw new TRPCError({ code: "FORBIDDEN", message: "Klient nie je váš" });
+      return ctx.prisma.trainingPlanAssignment.create({ data: input });
+    }),
 
   myAssigned: protectedProcedure.query(({ ctx }) =>
     ctx.prisma.trainingPlanAssignment.findMany({

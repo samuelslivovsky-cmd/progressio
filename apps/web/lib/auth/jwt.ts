@@ -6,12 +6,34 @@ import { ACCESS_TOKEN_TTL, type AuthUser } from "./config";
 // HS256 JWT, verified by signature only — no Redis/DB lookup — so the same
 // verify path runs in both Edge middleware and Node route handlers.
 
+// Known placeholder values shipped in example env files. Refused in production
+// so a misconfigured deploy can never sign tokens with a guessable secret.
+const PLACEHOLDER_SECRETS = new Set([
+  "replace-me-openssl-rand-base64-48",
+  "replace-me-openssl-rand-base64-32",
+]);
+
 function getAccessSecret(): Uint8Array {
   const secret = process.env.JWT_ACCESS_SECRET;
   if (!secret) {
     throw new Error("Missing JWT_ACCESS_SECRET for access-token signing.");
   }
-  return new TextEncoder().encode(secret);
+  const bytes = new TextEncoder().encode(secret);
+  // HS256 keys must be at least as long as the hash output (256 bits / 32 bytes).
+  if (bytes.length < 32) {
+    throw new Error(
+      "JWT_ACCESS_SECRET is too short: need >= 32 bytes (e.g. `openssl rand -base64 32`).",
+    );
+  }
+  if (
+    process.env.NODE_ENV === "production" &&
+    PLACEHOLDER_SECRETS.has(secret)
+  ) {
+    throw new Error(
+      "JWT_ACCESS_SECRET is a known placeholder value; set a real secret in production.",
+    );
+  }
+  return bytes;
 }
 
 /** Sign a short-lived access JWT for the given user. */

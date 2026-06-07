@@ -3,7 +3,7 @@
 Fitness trainer, client & behavior-prediction platform. pnpm + Turborepo monorepo.
 
 ## Stack
-Next.js 16 (App Router) · TypeScript · tRPC 11 · Prisma 7 + PostgreSQL 18 · NextAuth v5 · Tailwind + shadcn/ui.
+Next.js 16 (App Router) · TypeScript · tRPC 11 · Prisma 7 + PostgreSQL 18 · custom token auth (argon2id + JWT access/refresh, Redis) · Redis + BullMQ · Tailwind + shadcn/ui.
 
 ## Monorepo layout
 ```
@@ -15,7 +15,7 @@ packages/config     # @progressio/config — shared tsconfig + eslint
 ## Getting started
 ```bash
 pnpm install
-cp .env.example .env        # fill in DATABASE_URL, NEXTAUTH_SECRET, ...
+cp .env.example .env        # fill in DATABASE_URL, REDIS_URL, JWT_ACCESS_SECRET, ...
 pnpm db:generate
 pnpm dev                    # http://localhost:3000
 ```

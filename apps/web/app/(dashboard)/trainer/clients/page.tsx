@@ -3,6 +3,7 @@ import { prisma } from "@progressio/db";
 import { ClientsTable } from "@/components/trainer/clients-table";
 import { AddClientDialog } from "@/components/trainer/add-client-dialog";
 import { PageHeader } from "@/components/shared/page-header";
+import { toNum } from "@/lib/utils";
 
 export default async function ClientsPage() {
   const { profile } = await requireTrainer();
@@ -18,6 +19,11 @@ export default async function ClientsPage() {
     orderBy: { name: "asc" },
   });
 
+  const serializedClients = clients.map((c) => ({
+    ...c,
+    weightLogs: c.weightLogs.map((w) => ({ ...w, weight: toNum(w.weight) })),
+  }));
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -27,7 +33,7 @@ export default async function ClientsPage() {
         <AddClientDialog />
       </PageHeader>
 
-      <ClientsTable clients={clients} />
+      <ClientsTable clients={serializedClients} />
     </div>
   );
 }

@@ -1,6 +1,13 @@
+import { redirect } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
+import { getCurrentUser } from "@/lib/auth/session";
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
+  if (user) {
+    redirect(user.role === "TRAINER" ? "/trainer" : "/client");
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-[400px]">

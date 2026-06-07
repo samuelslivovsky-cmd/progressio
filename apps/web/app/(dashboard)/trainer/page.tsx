@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Users, ClipboardList, Dumbbell, TrendingUp, ChevronRight } from "lucide-react";
-import { RefreshAlertsOnMount } from "@/components/trainer/refresh-alerts-on-mount";
 import { IntelligenceSection } from "@/components/trainer/intelligence-section";
 
 export default async function TrainerDashboardPage() {
@@ -183,7 +182,6 @@ export default async function TrainerDashboardPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <RefreshAlertsOnMount />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dobrý deň, {profile.name}</h1>
         <p className="text-muted-foreground">Prehľad tvojich klientov a plánov</p>

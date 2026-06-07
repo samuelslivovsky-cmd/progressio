@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Html5Qrcode } from "html5-qrcode";
 import { X } from "lucide-react";
@@ -14,8 +14,8 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerIdRef = useRef("barcode-reader-" + Math.random().toString(36).slice(2));
-  const containerId = containerIdRef.current;
+  const reactId = useId();
+  const containerId = "barcode-reader-" + reactId.replace(/:/g, "");
 
   useEffect(() => {
     let mounted = true;

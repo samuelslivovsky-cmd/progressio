@@ -22,6 +22,9 @@
     "typecheck": {
       "dependsOn": ["generate", "^generate"]
     },
+    "test": {
+      "dependsOn": ["generate", "^generate"]
+    },
     "lint": {},
     "dev": {
       "dependsOn": ["^generate"],

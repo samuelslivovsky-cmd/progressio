@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Smartphone, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePwaInstall } from "@/components/pwa-install-context";
 
 const STORAGE_KEY = "pwa-install-dismissed";
 const DISMISS_DAYS = 7;
@@ -25,71 +26,34 @@ function setDismissed() {
   } catch {}
 }
 
-type InstallPromptEvent = Event & { prompt: () => Promise<{ outcome: string }> };
-
 export function PwaInstallBanner() {
+  const pwaInstall = usePwaInstall();
   const [mounted, setMounted] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const [canInstall, setCanInstall] = useState(false);
-  const [installing, setInstalling] = useState(false);
-  const installPromptRef = useRef<InstallPromptEvent | null>(null);
+  const [dismissed, setDismissedState] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const until = getDismissedUntil();
+    if (until && Date.now() < until) setDismissedState(true);
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      window.navigator.standalone === true;
-
-    if (isStandalone) return;
-
-    const dismissedUntil = getDismissedUntil();
-    if (dismissedUntil && Date.now() < dismissedUntil) return;
-
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      window.navigator.userAgent
-    );
-    if (!isMobile) return;
-
-    setVisible(true);
-
-    const handler = (e: Event) => {
-      e.preventDefault();
-      const ev = e as InstallPromptEvent;
-      installPromptRef.current = ev;
-      setCanInstall(true);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-      installPromptRef.current = null;
-    };
-  }, [mounted]);
-
   const handleDismiss = () => {
-    setVisible(false);
+    setDismissedState(true);
     setDismissed();
   };
 
   const handleInstall = async () => {
-    const prompt = installPromptRef.current;
-    if (!prompt?.prompt) return;
-    setInstalling(true);
-    try {
-      const result = await prompt.prompt();
-      if (result?.outcome === "accepted") setVisible(false);
-    } catch {
-      // User dismissed or error
-    } finally {
-      setInstalling(false);
-    }
+    if (!pwaInstall?.canInstall) return;
+    await pwaInstall.install();
   };
 
-  if (!mounted || !visible) return null;
+  if (!mounted || dismissed || !pwaInstall) return null;
+  if (pwaInstall.isStandalone) return null;
+
+  // Only show when the platform can install (Chrome/Edge) or on iOS Safari
+  // (manual Add to Home Screen).
+  const canInstall = pwaInstall.canInstall;
+  if (!canInstall && !pwaInstall.isIos) return null;
 
   return (
     <div
@@ -113,11 +77,11 @@ export function PwaInstallBanner() {
           <Button
             size="sm"
             onClick={handleInstall}
-            disabled={installing}
+            disabled={pwaInstall.isInstalling}
             className="shrink-0"
             type="button"
           >
-            {installing ? "Inštalujem…" : "Nainštaluj"}
+            {pwaInstall.isInstalling ? "Inštalujem…" : "Nainštaluj"}
           </Button>
         )}
         <Button

@@ -72,8 +72,8 @@ model Profile {
   name             String
   email            String   @unique
   avatarUrl        String?  @map("avatar_url")
-  goalWeight       Float?   @map("goal_weight")
-  height           Float?   @map("height")
+  goalWeight       Decimal? @map("goal_weight") @db.Decimal(6, 2)
+  height           Decimal? @map("height") @db.Decimal(5, 2)
   age              Int?     @map("age")
   activityLevel    String?  @map("activity_level")
   subscriptionTier String   @default("FREE") @map("subscription_tier")
@@ -100,15 +100,16 @@ model Profile {
   analyticsSnapshots   AnalyticsSnapshot[]
   weeklySummaries       WeeklySummary[]
   aiChatMessages        AiChatMessage[]
+  customExercises       Exercise[]               @relation("CustomExercises")
 
   @@map("profiles")
 }
 
 model ClientTrainer {
   id        String   @id @default(cuid())
-  client    Profile  @relation("ClientProfile", fields: [clientId], references: [id])
+  client    Profile  @relation("ClientProfile", fields: [clientId], references: [id], onDelete: Cascade)
   clientId  String   @unique @map("client_id")
-  trainer   Profile  @relation("TrainerClients", fields: [trainerId], references: [id])
+  trainer   Profile  @relation("TrainerClients", fields: [trainerId], references: [id], onDelete: Cascade)
   trainerId String   @map("trainer_id")
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -117,9 +118,9 @@ model ClientTrainer {
 
 model Alert {
   id        String    @id @default(cuid())
-  trainer   Profile   @relation("AlertTrainer", fields: [trainerId], references: [id])
+  trainer   Profile   @relation("AlertTrainer", fields: [trainerId], references: [id], onDelete: Cascade)
   trainerId String    @map("trainer_id")
-  client    Profile   @relation("AlertClient", fields: [clientId], references: [id])
+  client    Profile   @relation("AlertClient", fields: [clientId], references: [id], onDelete: Cascade)
   clientId  String    @map("client_id")
   type      AlertType
   severity  String
@@ -134,7 +135,7 @@ model Alert {
 
 model AnalyticsSnapshot {
   id                String   @id @default(cuid())
-  client            Profile  @relation(fields: [clientId], references: [id])
+  client            Profile  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId          String   @map("client_id")
   date              DateTime @db.Date
   adherenceScore    Float    @map("adherence_score")
@@ -143,19 +144,20 @@ model AnalyticsSnapshot {
   dropOffScore      Float    @map("drop_off_score")
   createdAt         DateTime @default(now()) @map("created_at")
 
-  @@index([clientId, date])
+  @@unique([clientId, date])
   @@map("analytics_snapshots")
 }
 
 model WeeklySummary {
   id         String   @id @default(cuid())
-  client     Profile  @relation(fields: [clientId], references: [id])
+  client     Profile  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId   String   @map("client_id")
   weekStart  DateTime @map("week_start") @db.Date
   content    String   // AI-generated markdown text
   highlights Json?    // { adherence, avgKcal, weightDelta, workoutsCompleted }
   createdAt  DateTime @default(now()) @map("created_at")
 
+  @@unique([clientId, weekStart])
   @@map("weekly_summaries")
 }
 
@@ -163,9 +165,9 @@ model WeeklySummary {
 
 model WeightLog {
   id        String          @id @default(cuid())
-  profile   Profile         @relation(fields: [profileId], references: [id])
+  profile   Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String          @map("profile_id")
-  weight    Float
+  weight    Decimal         @db.Decimal(6, 2)
   unit      MeasurementUnit @default(KG)
   note      String?
   loggedAt  DateTime        @default(now()) @map("logged_at")
@@ -176,19 +178,20 @@ model WeightLog {
 
 model Measurement {
   id        String          @id @default(cuid())
-  profile   Profile         @relation(fields: [profileId], references: [id])
+  profile   Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String          @map("profile_id")
-  chest     Float?
-  waist     Float?
-  hips      Float?
-  thigh     Float?
-  arm       Float?
-  calf      Float?
-  neck      Float?
+  chest     Decimal?        @db.Decimal(5, 2)
+  waist     Decimal?        @db.Decimal(5, 2)
+  hips      Decimal?        @db.Decimal(5, 2)
+  thigh     Decimal?        @db.Decimal(5, 2)
+  arm       Decimal?        @db.Decimal(5, 2)
+  calf      Decimal?        @db.Decimal(5, 2)
+  neck      Decimal?        @db.Decimal(5, 2)
   unit      MeasurementUnit @default(CM)
   note      String?
   loggedAt  DateTime        @default(now()) @map("logged_at")
 
+  @@index([profileId, loggedAt])
   @@map("measurements")
 }
 
@@ -197,12 +200,12 @@ model Measurement {
 model Food {
   id          String  @id @default(cuid())
   name        String
-  calories    Float
-  protein     Float
-  carbs       Float
-  fat         Float
-  fiber       Float   @default(0)
-  servingSize Float   @default(100) @map("serving_size")
+  calories    Decimal @db.Decimal(7, 2)
+  protein     Decimal @db.Decimal(6, 2)
+  carbs       Decimal @db.Decimal(6, 2)
+  fat         Decimal @db.Decimal(6, 2)
+  fiber       Decimal @default(0) @db.Decimal(6, 2)
+  servingSize Decimal @default(100) @map("serving_size") @db.Decimal(7, 2)
   unit        String  @default("g")
   barcode     String? @unique
 
@@ -215,7 +218,7 @@ model Food {
 
 model FoodLog {
   id        String        @id @default(cuid())
-  profile   Profile       @relation(fields: [profileId], references: [id])
+  profile   Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String        @map("profile_id")
   date      DateTime      @db.Date
   items     FoodLogItem[]
@@ -228,12 +231,12 @@ model FoodLog {
 
 model FoodLogItem {
   id         String  @id @default(cuid())
-  foodLog    FoodLog @relation(fields: [foodLogId], references: [id])
+  foodLog    FoodLog @relation(fields: [foodLogId], references: [id], onDelete: Cascade)
   foodLogId  String  @map("food_log_id")
-  food       Food?   @relation(fields: [foodId], references: [id])
+  food       Food?   @relation(fields: [foodId], references: [id], onDelete: SetNull)
   foodId     String? @map("food_id")
   customName String? @map("custom_name")
-  amount     Float
+  amount     Decimal @db.Decimal(7, 2)
   mealType   String  @map("meal_type") // breakfast, desiata, lunch, olovrant, dinner
 
   @@index([foodLogId])
@@ -244,7 +247,7 @@ model FoodLogItem {
 
 model MealPlan {
   id                  String               @id @default(cuid())
-  trainer             Profile              @relation(fields: [trainerId], references: [id])
+  trainer             Profile              @relation(fields: [trainerId], references: [id], onDelete: Cascade)
   trainerId           String               @map("trainer_id")
   name                String
   description         String?
@@ -259,7 +262,7 @@ model MealPlan {
 
 model MealPlanDay {
   id         String   @id @default(cuid())
-  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id])
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
   mealPlanId String   @map("meal_plan_id")
   dayNumber  Int      @map("day_number") // 1-7
   meals      Meal[]
@@ -270,7 +273,7 @@ model MealPlanDay {
 
 model Meal {
   id            String      @id @default(cuid())
-  mealPlanDay   MealPlanDay @relation(fields: [mealPlanDayId], references: [id])
+  mealPlanDay   MealPlanDay @relation(fields: [mealPlanDayId], references: [id], onDelete: Cascade)
   mealPlanDayId String      @map("meal_plan_day_id")
   name          String // breakfast, desiata, lunch, olovrant, dinner
   items         MealItem[]
@@ -280,12 +283,12 @@ model Meal {
 }
 
 model MealItem {
-  id     String @id @default(cuid())
-  meal   Meal   @relation(fields: [mealId], references: [id])
-  mealId String @map("meal_id")
-  food   Food   @relation(fields: [foodId], references: [id])
-  foodId String @map("food_id")
-  amount Float
+  id     String  @id @default(cuid())
+  meal   Meal    @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  mealId String  @map("meal_id")
+  food   Food    @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  foodId String  @map("food_id")
+  amount Decimal @db.Decimal(7, 2)
 
   @@index([mealId])
   @@map("meal_items")
@@ -293,9 +296,9 @@ model MealItem {
 
 model MealPlanAssignment {
   id         String    @id @default(cuid())
-  client     Profile   @relation(fields: [clientId], references: [id])
+  client     Profile   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId   String    @map("client_id")
-  mealPlan   MealPlan  @relation(fields: [mealPlanId], references: [id])
+  mealPlan   MealPlan  @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
   mealPlanId String    @map("meal_plan_id")
   startDate  DateTime  @map("start_date")
   endDate    DateTime? @map("end_date")
@@ -308,7 +311,7 @@ model MealPlanAssignment {
 
 model MealTemplate {
   id        String             @id @default(cuid())
-  trainer   Profile            @relation(fields: [trainerId], references: [id])
+  trainer   Profile            @relation(fields: [trainerId], references: [id], onDelete: Cascade)
   trainerId String             @map("trainer_id")
   name      String
   items     MealTemplateItem[]
@@ -321,9 +324,9 @@ model MealTemplateItem {
   id             String       @id @default(cuid())
   mealTemplate   MealTemplate @relation(fields: [mealTemplateId], references: [id], onDelete: Cascade)
   mealTemplateId String       @map("meal_template_id")
-  food           Food         @relation(fields: [foodId], references: [id])
+  food           Food         @relation(fields: [foodId], references: [id], onDelete: Restrict)
   foodId         String       @map("food_id")
-  amount         Float
+  amount         Decimal      @db.Decimal(7, 2)
 
   @@map("meal_template_items")
 }
@@ -338,17 +341,20 @@ model Exercise {
   muscleGroups String[] @map("muscle_groups")
   equipment    String?
   videoUrl     String?  @map("video_url")
+  createdById  String?  @map("created_by_id")
+  createdBy    Profile? @relation("CustomExercises", fields: [createdById], references: [id], onDelete: SetNull)
 
   trainingPlanExercises     TrainingPlanExercise[]
   clientTrainingPlanExercises ClientTrainingPlanExercise[]
   workoutLogItems           WorkoutLogItem[]
 
+  @@index([createdById])
   @@map("exercises")
 }
 
 model TrainingPlan {
   id          String                   @id @default(cuid())
-  trainer     Profile                  @relation(fields: [trainerId], references: [id])
+  trainer     Profile                  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
   trainerId   String                   @map("trainer_id")
   name        String
   description String?
@@ -362,7 +368,7 @@ model TrainingPlan {
 
 model TrainingPlanDay {
   id             String                 @id @default(cuid())
-  trainingPlan   TrainingPlan           @relation(fields: [trainingPlanId], references: [id])
+  trainingPlan   TrainingPlan           @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
   trainingPlanId String                 @map("training_plan_id")
   dayNumber      Int                    @map("day_number")
   name           String? // e.g. "Push Day", "Legs"
@@ -375,9 +381,9 @@ model TrainingPlanDay {
 
 model TrainingPlanExercise {
   id                String          @id @default(cuid())
-  trainingPlanDay   TrainingPlanDay @relation(fields: [trainingPlanDayId], references: [id])
+  trainingPlanDay   TrainingPlanDay @relation(fields: [trainingPlanDayId], references: [id], onDelete: Cascade)
   trainingPlanDayId String          @map("training_plan_day_id")
-  exercise          Exercise        @relation(fields: [exerciseId], references: [id])
+  exercise          Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
   exerciseId        String          @map("exercise_id")
   sets              Int
   reps              String // can be "8-12" or "10"
@@ -391,9 +397,9 @@ model TrainingPlanExercise {
 
 model TrainingPlanAssignment {
   id             String       @id @default(cuid())
-  client         Profile      @relation(fields: [clientId], references: [id])
+  client         Profile      @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId       String       @map("client_id")
-  trainingPlan   TrainingPlan @relation(fields: [trainingPlanId], references: [id])
+  trainingPlan   TrainingPlan @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
   trainingPlanId String       @map("training_plan_id")
   startDate      DateTime     @map("start_date")
   endDate        DateTime?    @map("end_date")
@@ -431,7 +437,7 @@ model ClientTrainingPlanExercise {
   id                   String                @id @default(cuid())
   clientTrainingPlanDay ClientTrainingPlanDay @relation(fields: [clientTrainingPlanDayId], references: [id], onDelete: Cascade)
   clientTrainingPlanDayId String              @map("client_training_plan_day_id")
-  exercise             Exercise              @relation(fields: [exerciseId], references: [id])
+  exercise             Exercise              @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
   exerciseId           String                @map("exercise_id")
   sets                 Int
   reps                 String                // e.g. "10" or "8-12"
@@ -444,7 +450,7 @@ model ClientTrainingPlanExercise {
 
 model WorkoutLog {
   id          String           @id @default(cuid())
-  profile     Profile          @relation(fields: [profileId], references: [id])
+  profile     Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId   String           @map("profile_id")
   date        DateTime         @db.Date
   name        String?
@@ -459,9 +465,9 @@ model WorkoutLog {
 
 model WorkoutLogItem {
   id           String       @id @default(cuid())
-  workoutLog   WorkoutLog   @relation(fields: [workoutLogId], references: [id])
+  workoutLog   WorkoutLog   @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
   workoutLogId String       @map("workout_log_id")
-  exercise     Exercise     @relation(fields: [exerciseId], references: [id])
+  exercise     Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
   exerciseId   String       @map("exercise_id")
   sets         WorkoutSet[]
 
@@ -471,10 +477,10 @@ model WorkoutLogItem {
 
 model WorkoutSet {
   id               String         @id @default(cuid())
-  workoutLogItem   WorkoutLogItem @relation(fields: [workoutLogItemId], references: [id])
+  workoutLogItem   WorkoutLogItem @relation(fields: [workoutLogItemId], references: [id], onDelete: Cascade)
   workoutLogItemId String         @map("workout_log_item_id")
   reps             Int?
-  weightKg         Float?         @map("weight_kg")
+  weightKg         Decimal?       @map("weight_kg") @db.Decimal(6, 2)
   durationSec      Int?           @map("duration_sec")
   note             String?
 
@@ -486,11 +492,12 @@ model WorkoutSet {
 
 model AiChatMessage {
   id        String   @id @default(cuid())
-  client    Profile  @relation(fields: [clientId], references: [id])
+  client    Profile  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId  String   @map("client_id")
   role      String   // "user" | "assistant"
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([clientId, createdAt])
   @@map("ai_chat_messages")
 }

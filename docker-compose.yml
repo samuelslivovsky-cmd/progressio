@@ -47,6 +47,7 @@ services:
       DATABASE_URL: postgresql://progressio:progressio@db:5432/progressio
       DIRECT_URL: postgresql://progressio:progressio@db:5432/progressio
       REDIS_URL: redis://redis:6379
+      TZ: Europe/Bratislava
     depends_on:
       db:
         condition: service_healthy

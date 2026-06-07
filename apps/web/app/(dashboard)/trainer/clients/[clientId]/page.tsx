@@ -3,7 +3,7 @@ import { prisma } from "@progressio/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, toNum } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 import { ClientDetailTabs } from "@/components/trainer/client-detail-tabs";
 
@@ -28,14 +28,14 @@ export default async function ClientDetailPage({
   if (!client) notFound();
 
   const lastWeight = client.weightLogs[0]
-    ? { weight: client.weightLogs[0].weight, unit: client.weightLogs[0].unit, loggedAt: client.weightLogs[0].loggedAt }
+    ? { weight: toNum(client.weightLogs[0].weight), unit: client.weightLogs[0].unit, loggedAt: client.weightLogs[0].loggedAt }
     : null;
-  const prevWeight = client.weightLogs[1] ? { weight: client.weightLogs[1].weight } : null;
+  const prevWeight = client.weightLogs[1] ? { weight: toNum(client.weightLogs[1].weight) } : null;
   const lastMeasurement = client.measurements[0]
     ? {
-        waist: client.measurements[0].waist,
-        chest: client.measurements[0].chest,
-        hips: client.measurements[0].hips,
+        waist: toNum(client.measurements[0].waist),
+        chest: toNum(client.measurements[0].chest),
+        hips: toNum(client.measurements[0].hips),
         loggedAt: client.measurements[0].loggedAt,
       }
     : null;

@@ -9,7 +9,9 @@ with named volumes; a BullMQ **worker** service runs the background jobs; and
 ```
 GitHub push to main
   └─ build-push job → docker build → push ghcr.io/<owner>/progressio:{latest,sha}
-  └─ deploy job → ssh hetzner → docker compose pull && up -d → /api/health smoke test
+  └─ deploy job → ssh hetzner →
+       pg_dump backup → docker compose pull → run --rm migrate → up -d
+       → /api/health smoke test (asserts "status":"ok")
 ```
 
 ## 1. One-time server setup
@@ -51,27 +53,37 @@ docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-The app container runs `prisma migrate deploy` on startup, so the schema is
-applied automatically.
+Migrations are **not** run automatically on container boot. The first deploy (and
+every subsequent one) applies the schema via the one-shot `migrate` service —
+see [§4 Deploy](#4-deploy). To apply migrations manually on the server:
+
+```bash
+cd /opt/progressio
+docker compose -f docker-compose.prod.yml run --rm migrate
+```
 
 ### Services in `docker-compose.prod.yml`
 
 | Service | Image | Role |
 |---------|-------|------|
-| `app` | GHCR (Next standalone) | The web app. Runs `prisma migrate deploy` then `node apps/web/server.js`. |
-| `worker` | GHCR (same image) | BullMQ worker — nightly analytics (02:00) + weekly AI summaries (Mon 06:00) and repeatable-job registration. |
+| `app` | GHCR (Next standalone) | The web app. Runs `node apps/web/server.js`. Does **not** migrate on boot (`RUN_MIGRATIONS` unset). |
+| `migrate` | GHCR (same image) | One-shot migration runner (`profiles: ["tools"]`, `RUN_MIGRATIONS=true`). Runs `prisma migrate deploy` then exits. Invoked via `run --rm migrate`. |
+| `worker` | GHCR (same image) | BullMQ worker — runs the esbuild bundle `apps/web/dist/worker.cjs`: nightly analytics (02:00) + weekly AI summaries (Mon 06:00) and repeatable-job registration. |
 | `db` | `postgres:18-alpine` | Postgres, named volume `pgdata`. |
 | `redis` | `redis:7-alpine` (AOF) | Refresh-token store, profile cache, rate limiting, BullMQ broker. Named volume `redisdata`. |
 | `caddy` | `caddy:2-alpine` | TLS termination / reverse proxy. |
 
-> ⚠️ **Worker production-packaging caveat.** The prod image is a Next.js
-> *standalone* build — it does **not** include `tsx` nor the raw
-> `server/jobs/**.ts` sources, so the worker's `tsx server/jobs/worker.ts`
-> command will **not** run as-is in that image. Before relying on the worker in
-> prod, either (a) compile the worker (esbuild/`tsx build` → `dist/worker.js`)
-> and ship it + its deps in the image, then run `node dist/worker.js`, or
-> (b) build a second, non-standalone image that retains tsx + the TS sources and
-> point the `worker` service at it. The dev stack runs the worker correctly today.
+> **Worker packaging.** The worker no longer runs `tsx` on the raw TS sources.
+> The CI build bundles `server/jobs/worker.ts` into `apps/web/dist/worker.cjs`
+> (esbuild, see `apps/web/scripts/build-worker.mjs`) and ships it alongside a
+> pruned prod `node_modules` for its external deps (ioredis, bullmq, pg,
+> @node-rs/argon2, @prisma/*). The `worker` service overrides the image
+> entrypoint and runs `node apps/web/dist/worker.cjs` directly.
+
+> **Migrations & boot.** `docker-entrypoint.sh` only runs `prisma migrate deploy`
+> when `RUN_MIGRATIONS=true`, which only the `migrate` service sets. This keeps
+> migrations a single guarded step (safe with multiple runners) instead of a
+> race on every container boot.
 
 ## 2. Production `.env`
 
@@ -113,8 +125,18 @@ ssh-keygen -t ed25519 -C "progressio-deploy" -f deploy_key
 
 ## 4. Deploy
 
-Push to `main` (or run the **Deploy** workflow manually). The pipeline builds,
-pushes, pulls on the VPS, restarts, and verifies `https://<APP_DOMAIN>/api/health`.
+Push to `main` (or run the **Deploy** workflow manually). The pipeline builds and
+pushes the image, then on the VPS it:
+
+1. **Backs up the DB first** — `pg_dump --clean --if-exists | gzip` →
+   `backups/pre-deploy_<timestamp>.sql.gz`. The deploy **aborts** if the backup
+   file is empty. Only the most recent 14 backups are kept.
+2. **Pulls** the new image.
+3. **Migrates once** — `docker compose run --rm migrate` (the one-shot service),
+   so the schema is applied exactly once before any app/worker container starts.
+4. **Rolls out** — `up -d`, then verifies `https://<APP_DOMAIN>/api/health`
+   returns `"status":"ok"` (DB **and** Redis up). A Redis-down deploy reports
+   `"status":"degraded"` (HTTP 200) and fails the smoke test.
 
 ## 5. Operations
 
@@ -124,13 +146,32 @@ docker compose -f docker-compose.prod.yml logs -f app   # tail logs
 docker compose -f docker-compose.prod.yml ps             # status
 docker compose -f docker-compose.prod.yml restart app    # restart
 
-# DB backup
-docker compose -f docker-compose.prod.yml exec db \
-  pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > backup_$(date +%F).sql
+# Manual DB backup (the deploy pipeline also takes one automatically into ./backups)
+set -a; . ./.env; set +a
+docker compose -f docker-compose.prod.yml exec -T db \
+  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists \
+  | gzip > backups/manual_$(date +%F_%H%M%S).sql.gz
 ```
 
-Rollback to a previous image:
+### Rollback
+
+Roll the **image** back to a previous build:
 
 ```bash
-IMAGE_TAG=<old-sha> docker compose -f docker-compose.prod.yml up -d app
+IMAGE_TAG=<old-sha> docker compose -f docker-compose.prod.yml up -d app worker
 ```
+
+> ⚠️ **An image rollback does NOT undo a database migration.** Prisma migrations
+> are forward-only here. If a bad migration shipped, rolling the image back will
+> leave the schema ahead of the old code. To truly revert, **restore from the
+> pre-deploy backup** taken at the start of that deploy:
+>
+> ```bash
+> set -a; . ./.env; set +a
+> gunzip -c backups/pre-deploy_<timestamp>.sql.gz \
+>   | docker compose -f docker-compose.prod.yml exec -T db \
+>     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+> ```
+>
+> The backup is taken with `--clean --if-exists`, so it drops and recreates
+> objects on restore. Restore, then bring the matching old image up.

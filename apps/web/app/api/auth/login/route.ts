@@ -1,4 +1,3 @@
-import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@progressio/db";
 import {
@@ -9,16 +8,17 @@ import {
 import { signAccessToken } from "@/lib/auth/tokens";
 import { issueRefresh } from "@/lib/auth/token-store";
 import { setAuthCookies } from "@/lib/auth/cookies";
+import { loginSchema } from "@/lib/auth/validation";
 import type { AuthUser } from "@/lib/auth/config";
-import { requestMeta } from "../_shared";
+import {
+  requestMeta,
+  withRedisFailClosed,
+  SERVICE_UNAVAILABLE,
+  serviceUnavailableResponse,
+} from "../_shared";
 import { rateLimit, rateLimitByIp, tooManyResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
 
 export async function POST(req: Request) {
   // Rate limit by IP first (cheap, no body needed): 10 / 60s.
@@ -40,11 +40,12 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
+  // email is already normalized (trimmed + lowercased) by loginSchema.
   const { email, password } = parsed.data;
 
   // Rate limit by email (normalized): 5 / 900s.
   const emailLimit = await rateLimit({
-    key: `login:email:${email.trim().toLowerCase()}`,
+    key: `login:email:${email}`,
     limit: 5,
     windowSec: 900,
   });
@@ -106,12 +107,17 @@ export async function POST(req: Request) {
 
   const access = await signAccessToken(authUser);
   const meta = requestMeta(req);
-  const { raw: refresh } = await issueRefresh({
-    user: authUser,
-    userAgent: meta.userAgent,
-    ip: meta.ip,
-  });
-  await setAuthCookies(access, refresh);
+  // Token issuance is security-critical: a Redis failure must fail CLOSED
+  // (503) rather than silently issuing a refresh token we can't track.
+  const issued = await withRedisFailClosed(() =>
+    issueRefresh({
+      user: authUser,
+      userAgent: meta.userAgent,
+      ip: meta.ip,
+    }),
+  );
+  if (issued === SERVICE_UNAVAILABLE) return serviceUnavailableResponse();
+  await setAuthCookies(access, issued.raw);
 
   return Response.json({ ok: true, user: { id: user.id, role: profile.role } });
 }

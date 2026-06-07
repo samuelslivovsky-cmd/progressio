@@ -29,7 +29,12 @@ export async function registerRepeatableJobs(): Promise<void> {
     { firedAt: new Date().toISOString() },
     {
       jobId: NIGHTLY_ANALYTICS_JOB_ID,
-      repeat: { pattern: NIGHTLY_ANALYTICS_CRON },
+      // tz pins the cron to Slovak local time regardless of the container TZ.
+      repeat: { pattern: NIGHTLY_ANALYTICS_CRON, tz: "Europe/Bratislava" },
+      // Retries are safe: the processor derives its target date from firedAt
+      // and upserts on (clientId, date), so a re-run is idempotent.
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60000 },
       removeOnComplete: { count: 50 },
       removeOnFail: { count: 100 },
     },
@@ -40,7 +45,10 @@ export async function registerRepeatableJobs(): Promise<void> {
     { firedAt: new Date().toISOString() },
     {
       jobId: WEEKLY_SUMMARIES_JOB_ID,
-      repeat: { pattern: WEEKLY_SUMMARIES_CRON },
+      repeat: { pattern: WEEKLY_SUMMARIES_CRON, tz: "Europe/Bratislava" },
+      // Idempotent via firedAt-derived week + (clientId, weekStart) upsert.
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60000 },
       removeOnComplete: { count: 50 },
       removeOnFail: { count: 100 },
     },
