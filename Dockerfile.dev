@@ -1,17 +1,19 @@
 FROM node:20-alpine
 RUN apk add --no-cache libc6-compat
+RUN corepack enable
 WORKDIR /app
-
-# Install dependencies (cached unless package files change).
-COPY package.json package-lock.json* ./
-RUN npm ci
-
-# Generate the Prisma client into node_modules.
-COPY prisma ./prisma
-RUN npx prisma generate
-
 ENV NEXT_TELEMETRY_DISABLED=1
-EXPOSE 3000
 
-# Source is bind-mounted at runtime (see docker-compose.yml) for hot reload.
-CMD ["npm", "run", "dev"]
+# Install the whole workspace (cached unless any manifest changes).
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc turbo.json ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/db/package.json ./packages/db/
+COPY packages/config/package.json ./packages/config/
+RUN pnpm install --frozen-lockfile
+
+# Generate the Prisma client (schema copied here; source is bind-mounted at runtime).
+COPY packages/db ./packages/db
+RUN pnpm --filter @progressio/db generate
+
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@progressio/web", "exec", "next", "dev"]

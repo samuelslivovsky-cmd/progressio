@@ -4,7 +4,8 @@
 Web app for fitness trainers and their clients, with behavior-based predictions. Clients log food, workouts, weight, measurements. Trainers create meal plans, training plans, and evaluate client progress. The platform creates predictions from client behavior to suggest next steps and insights.
 
 ## Stack
-- **Framework**: Next.js 15 (App Router, Server Components, Server Actions)
+- **Framework**: Next.js 16 (App Router, Server Components, Server Actions)
+- **Monorepo**: pnpm workspaces + Turborepo (`apps/web`, `packages/db`, `packages/config`)
 - **Language**: TypeScript
 - **Database**: PostgreSQL (local Docker for dev, Supabase-hosted for prod)
 - **ORM**: Prisma
@@ -23,50 +24,62 @@ Web app for fitness trainers and their clients, with behavior-based predictions.
 - tRPC routers live in `server/routers/`, exposed via `app/api/trpc/[trpc]/route.ts`.
 - NextAuth.js v5 handles auth — middleware checks JWT session and injects user into tRPC context.
 - Two roles: `trainer` and `client`. Role stored in `profiles` table and NextAuth JWT token.
-- Prisma schema is source of truth for DB. Always run `npx prisma generate` after schema changes.
+- Prisma schema (`packages/db/prisma/schema.prisma`) is source of truth for DB. Run `pnpm db:generate` after schema changes.
 
-## Project Structure
+## Monorepo Layout
+pnpm workspaces + Turborepo. Two workspace globs: `apps/*` and `packages/*`.
 ```
-app/
-  (auth)/          # login, register pages (public)
-  (dashboard)/     # protected pages
-    trainer/       # trainer-specific views
-    client/        # client-specific views
-  api/
-    trpc/[trpc]/   # tRPC handler
-components/
-  ui/              # shadcn/ui components
-  shared/          # shared components
-  trainer/         # trainer-specific components
-  client/          # client-specific components
-server/
-  routers/         # tRPC routers (one per domain)
-  trpc.ts          # tRPC init + context
-  context.ts       # request context (auth session)
-lib/
-  auth.ts          # NextAuth.js config (handlers, auth, signIn, signOut)
-  auth-helpers.ts  # requireAuth(), requireTrainer(), requireClient()
-  prisma.ts        # Prisma client singleton
-  utils.ts         # shared utilities
-types/
-  next-auth.d.ts   # NextAuth type augmentation (session with role, profileId)
-prisma/
-  schema.prisma    # DB schema
+apps/
+  web/                 # @progressio/web — the Next.js app (everything below lives here)
+    app/
+      (auth)/          # login, register pages (public)
+      (dashboard)/     # protected pages → trainer/ + client/ views
+      api/trpc/[trpc]/ # tRPC handler
+    components/         # ui/ (shadcn), shared/, trainer/, client/
+    server/
+      routers/         # tRPC routers (one per domain)
+      trpc.ts          # tRPC init + context
+      context.ts       # request context (auth session, prisma)
+    lib/
+      auth.ts          # NextAuth.js config (handlers, auth, signIn, signOut)
+      auth.config.ts   # Edge-safe callbacks (authorized, jwt, session, trustHost)
+      auth-helpers.ts  # requireAuth(), requireTrainer(), requireClient()
+      utils.ts         # shared utilities
+    types/
+      next-auth.d.ts   # NextAuth type augmentation (session/user with role, profileId)
+    middleware.ts  next.config.ts  components.json  postcss.config.mjs
+packages/
+  db/                  # @progressio/db — Prisma (single source of client + types)
+    prisma/schema.prisma + migrations/ + seed scripts
+    prisma.config.ts   # loads root ../../.env, datasource url
+    src/client.ts      # PrismaClient singleton (PrismaPg adapter)
+    src/index.ts       # re-exports prisma + all generated types/enums
+    src/generated/     # generated client (gitignored)
+  config/              # @progressio/config — shared tsconfig/base.json + eslint/index.mjs
 ```
+- App code imports the DB via `@progressio/db` (never `@prisma/client` directly).
+- The `@/*` alias is scoped to `apps/web` (→ `apps/web/*`).
 
 ## Commands
+Run from the repo root (Turborepo orchestrates the workspace). Package manager: **pnpm**.
 ```bash
+# Setup
+pnpm install
+pnpm db:generate          # generate Prisma client (also auto-runs before build/typecheck)
+
 # Development
-npm run dev
+pnpm dev                  # turbo run dev (web app)
 
-# Database
-npx prisma generate       # regenerate client after schema change
-npx prisma migrate dev    # create + apply migration
-npx prisma studio         # open DB GUI
+# Database (delegates to @progressio/db)
+pnpm db:migrate           # prisma migrate dev (create + apply migration)
+pnpm db:deploy            # prisma migrate deploy (prod)
+pnpm db:studio            # open DB GUI
+pnpm db:seed              # seed exercises
 
-# Build
-npm run build
-npm start
+# Quality / Build
+pnpm typecheck            # turbo run typecheck (all packages)
+pnpm lint                 # turbo run lint
+pnpm build                # turbo run build
 ```
 
 ## Environment Variables (.env.local)
@@ -298,11 +311,12 @@ enum AlertType {
 - Copy `.env.example` → `.env` first. Migrations run automatically on app start.
 
 ### Production — Hetzner VPS (primary)
-- Multi-stage `Dockerfile` builds the standalone production image; its entrypoint
-  (`docker-entrypoint.sh`) runs `prisma migrate deploy` then `node server.js`.
+- Multi-stage `Dockerfile` (pnpm/corepack) builds the Next standalone output and a
+  flattened `@progressio/db` (via `pnpm deploy`). Entrypoint (`docker-entrypoint.sh`)
+  runs `prisma migrate deploy` (cwd `packages/db`) then `node apps/web/server.js`.
 - CI (`.github/workflows/deploy.yml`) builds the image, pushes to **GHCR**, then
   SSHes into the VPS and runs `docker compose -f docker-compose.prod.yml pull && up -d`.
-- `docker-compose.prod.yml`: app (from GHCR) + Postgres (named volume) + Caddy (TLS).
+- `docker-compose.prod.yml`: app (from GHCR) + Postgres 18 (named volume) + Caddy (TLS).
 - `.github/workflows/ci.yml` runs lint (non-blocking) + typecheck + build on every PR.
 - Full setup, secrets, and operations: see `DEPLOYMENT.md`.
 - Health check: `GET /api/health` (also pings the DB).

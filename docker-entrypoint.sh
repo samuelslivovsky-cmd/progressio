@@ -1,10 +1,12 @@
 #!/bin/sh
 set -e
 
-# Apply any pending database migrations before booting the app.
-# Single-instance deployment, so running this on startup is safe.
+# Apply pending migrations using the self-contained db package.
+# DATABASE_URL/DIRECT_URL come from the environment (docker compose).
 echo "[entrypoint] Running prisma migrate deploy..."
+cd /app/packages/db
 node node_modules/prisma/build/index.js migrate deploy
+cd /app
 
 echo "[entrypoint] Starting app: $*"
 exec "$@"

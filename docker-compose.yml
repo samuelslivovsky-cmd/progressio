@@ -8,7 +8,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     restart: unless-stopped
-    command: sh -c "node node_modules/prisma/build/index.js migrate deploy && npm run dev"
+    command: sh -c "pnpm --filter @progressio/db migrate:deploy && pnpm --filter @progressio/web exec next dev"
     ports:
       - "3000:3000"
     env_file:
@@ -22,12 +22,16 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      # Keep container-built node_modules / .next, don't let the host shadow them.
+      # Keep container-installed deps / generated client / build cache.
       - /app/node_modules
-      - /app/.next
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+      - /app/packages/db/node_modules
+      - /app/packages/config/node_modules
+      - /app/packages/db/src/generated
 
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     ports:
       - "5433:5432"
