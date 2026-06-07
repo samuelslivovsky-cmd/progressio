@@ -21,6 +21,9 @@
     "turbo": "^2.5.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["prisma", "@prisma/client", "@prisma/engines", "esbuild", "bcrypt"]
+    "onlyBuiltDependencies": ["prisma", "@prisma/client", "@prisma/engines", "esbuild", "bcrypt"],
+    "overrides": {
+      "ioredis": "5.11.1"
+    }
   }
 }

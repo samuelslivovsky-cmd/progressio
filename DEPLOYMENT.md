@@ -2,8 +2,9 @@
 
 Production runs on a single Hetzner VPS. CI builds a Docker image, pushes it to
 the **GitHub Container Registry (GHCR)**, then SSHes into the VPS and runs
-`docker compose pull && up -d`. Postgres runs in Docker on the VPS with a named
-volume; **Caddy** terminates TLS (automatic Let's Encrypt).
+`docker compose pull && up -d`. Postgres and **Redis** run in Docker on the VPS
+with named volumes; a BullMQ **worker** service runs the background jobs; and
+**Caddy** terminates TLS (automatic Let's Encrypt).
 
 ```
 GitHub push to main
@@ -53,6 +54,25 @@ docker compose -f docker-compose.prod.yml up -d
 The app container runs `prisma migrate deploy` on startup, so the schema is
 applied automatically.
 
+### Services in `docker-compose.prod.yml`
+
+| Service | Image | Role |
+|---------|-------|------|
+| `app` | GHCR (Next standalone) | The web app. Runs `prisma migrate deploy` then `node apps/web/server.js`. |
+| `worker` | GHCR (same image) | BullMQ worker — nightly analytics (02:00) + weekly AI summaries (Mon 06:00) and repeatable-job registration. |
+| `db` | `postgres:18-alpine` | Postgres, named volume `pgdata`. |
+| `redis` | `redis:7-alpine` (AOF) | Refresh-token store, profile cache, rate limiting, BullMQ broker. Named volume `redisdata`. |
+| `caddy` | `caddy:2-alpine` | TLS termination / reverse proxy. |
+
+> ⚠️ **Worker production-packaging caveat.** The prod image is a Next.js
+> *standalone* build — it does **not** include `tsx` nor the raw
+> `server/jobs/**.ts` sources, so the worker's `tsx server/jobs/worker.ts`
+> command will **not** run as-is in that image. Before relying on the worker in
+> prod, either (a) compile the worker (esbuild/`tsx build` → `dist/worker.js`)
+> and ship it + its deps in the image, then run `node dist/worker.js`, or
+> (b) build a second, non-standalone image that retains tsx + the TS sources and
+> point the `worker` service at it. The dev stack runs the worker correctly today.
+
 ## 2. Production `.env`
 
 Fill in from `.env.example`. Critical values:
@@ -60,8 +80,11 @@ Fill in from `.env.example`. Critical values:
 | Variable | Notes |
 |----------|-------|
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres container creds. `DATABASE_URL`/`DIRECT_URL` are derived from these in the compose file. |
-| `NEXTAUTH_SECRET` | `openssl rand -base64 32` |
-| `NEXTAUTH_URL` / `NEXT_PUBLIC_APP_URL` | `https://<your-domain>` |
+| `REDIS_URL` | Redis connection string (e.g. `redis://redis:6379`). Backs refresh-token store, profile cache, rate limiting, and BullMQ. |
+| `JWT_ACCESS_SECRET` | HMAC secret for signing access-token JWTs. `openssl rand -base64 32` (>=32 bytes). Rotating it invalidates all live access tokens. |
+| `ACCESS_TOKEN_TTL` | Access token lifetime in seconds. Optional; default `900` (15 min). |
+| `REFRESH_TOKEN_TTL` | Refresh token lifetime in seconds. Optional; default `604800` (7 days). |
+| `NEXT_PUBLIC_APP_URL` | `https://<your-domain>` |
 | `APP_DOMAIN` | Domain Caddy serves + provisions TLS for |
 | `IMAGE_TAG` | Set per-deploy by CI (commit SHA); defaults to `latest` |
 

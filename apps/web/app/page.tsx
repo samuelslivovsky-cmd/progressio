@@ -1,13 +1,13 @@
-import { auth } from "@/lib/auth";
-import { prisma } from "@progressio/db";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getCachedProfile } from "@/lib/cache";
 import { LandingPage } from "@/components/landing/landing-page";
 
 export default async function RootPage() {
-  const session = await auth();
+  const user = await getCurrentUser();
 
   let role: "TRAINER" | "CLIENT" | null = null;
-  if (session?.user) {
-    const profile = await prisma.profile.findUnique({ where: { userId: session.user.id } });
+  if (user) {
+    const profile = await getCachedProfile(user.userId);
     if (profile) role = profile.role;
   }
 

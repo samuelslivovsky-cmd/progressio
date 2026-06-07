@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,19 +19,23 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
-    if (result?.error) {
+    if (!res.ok) {
       setError("Nesprávny email alebo heslo.");
       setLoading(false);
       return;
     }
 
-    router.push("/dashboard");
+    const data = (await res.json()) as { user?: { role?: string } };
+    const role = data.user?.role;
+    if (role === "TRAINER") router.push("/trainer");
+    else if (role === "CLIENT") router.push("/client");
+    else router.push("/dashboard");
   }
 
   return (

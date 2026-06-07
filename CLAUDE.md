@@ -10,7 +10,8 @@ Web app for fitness trainers and their clients, with behavior-based predictions.
 - **Database**: PostgreSQL (local Docker for dev, Supabase-hosted for prod)
 - **ORM**: Prisma
 - **API**: tRPC (end-to-end type safety)
-- **Auth**: NextAuth.js v5 (Credentials provider, JWT sessions, Prisma adapter)
+- **Auth**: Custom token auth — argon2id password hashing (`@node-rs/argon2`); JWT access token (15 min, `jose`) + opaque refresh token (7 days, rotation + reuse-detection) backed by Redis; both delivered as httpOnly cookies.
+- **Cache / Queue**: Redis (`ioredis`) for refresh-token store, profile cache, and rate limiting; BullMQ for background jobs.
 - **UI**: Tailwind CSS + shadcn/ui
 - **State**: TanStack Query v5
 - **Forms**: React Hook Form + Zod
@@ -22,8 +23,8 @@ Web app for fitness trainers and their clients, with behavior-based predictions.
 - **NO Vercel** — deployed via Coolify (self-hosted). Use `next start` not edge runtime.
 - App Router with Server Components by default; `"use client"` only when necessary.
 - tRPC routers live in `server/routers/`, exposed via `app/api/trpc/[trpc]/route.ts`.
-- NextAuth.js v5 handles auth — middleware checks JWT session and injects user into tRPC context.
-- Two roles: `trainer` and `client`. Role stored in `profiles` table and NextAuth JWT token.
+- **Custom token auth** (no NextAuth). Auth endpoints under `app/api/auth/{login,register,refresh,logout,logout-all}`. `middleware.ts` verifies the access-token JWT (edge-safe, `jose`) and gates protected routes. The tRPC context (`server/context.ts`) resolves the principal via `getCurrentUser` and loads a Redis-cached profile (`getCachedProfile`). Refresh tokens rotate on `/api/auth/refresh` with reuse-detection (whole session family revoked on reuse).
+- Two roles: `trainer` and `client`. Role stored in `profiles` table and embedded in the access-token JWT claims (`AuthUser`: userId, profileId, role).
 - Prisma schema (`packages/db/prisma/schema.prisma`) is source of truth for DB. Run `pnpm db:generate` after schema changes.
 
 ## Monorepo Layout
@@ -34,19 +35,31 @@ apps/
     app/
       (auth)/          # login, register pages (public)
       (dashboard)/     # protected pages → trainer/ + client/ views
+      api/auth/        # login, register, refresh, logout, logout-all route handlers
       api/trpc/[trpc]/ # tRPC handler
     components/         # ui/ (shadcn), shared/, trainer/, client/
     server/
       routers/         # tRPC routers (one per domain)
       trpc.ts          # tRPC init + context
-      context.ts       # request context (auth session, prisma)
+      context.ts       # request context (getCurrentUser + cached profile, prisma)
+      jobs/            # BullMQ: queue.ts, connection.ts, worker.ts, scheduler.ts, processors/
     lib/
-      auth.ts          # NextAuth.js config (handlers, auth, signIn, signOut)
-      auth.config.ts   # Edge-safe callbacks (authorized, jwt, session, trustHost)
+      auth/
+        config.ts      # token TTLs, cookie naming, AuthUser type
+        password.ts    # argon2id hash/verify + isBcryptHash (legacy migration)
+        jwt.ts         # edge-safe access-token sign/verify (jose only)
+        tokens.ts      # re-exports jwt + opaque refresh-token generation (node:crypto)
+        token-store.ts # Redis-backed refresh sessions (issue/rotate/revoke, reuse-detect)
+        cookies.ts     # set/clear httpOnly auth cookies
+        session.ts     # getCurrentUser() — read+verify access token
+        register.ts    # shared registration logic
       auth-helpers.ts  # requireAuth(), requireTrainer(), requireClient()
+      redis.ts         # ioredis singleton
+      cache.ts         # getCachedProfile() and cache invalidation
+      rate-limit.ts    # Redis sliding-window rate limiting
       utils.ts         # shared utilities
     types/
-      next-auth.d.ts   # NextAuth type augmentation (session/user with role, profileId)
+      navigator.d.ts   # ambient browser type augmentation
     middleware.ts  next.config.ts  components.json  postcss.config.mjs
 packages/
   db/                  # @progressio/db — Prisma (single source of client + types)
@@ -59,6 +72,7 @@ packages/
 ```
 - App code imports the DB via `@progressio/db` (never `@prisma/client` directly).
 - The `@/*` alias is scoped to `apps/web` (→ `apps/web/*`).
+- **Background jobs** (`apps/web/server/jobs/`): BullMQ on Redis. `queue.ts` defines the analytics + ai-summary queues, `worker.ts` runs the processors and registers the schedules, `scheduler.ts` registers idempotent repeatable jobs — nightly analytics at **02:00** (`0 2 * * *`) and weekly summaries **Monday 06:00** (`0 6 * * 1`). Processors live in `processors/`.
 
 ## Commands
 Run from the repo root (Turborepo orchestrates the workspace). Package manager: **pnpm**.
@@ -76,6 +90,10 @@ pnpm db:deploy            # prisma migrate deploy (prod)
 pnpm db:studio            # open DB GUI
 pnpm db:seed              # seed exercises
 
+# Background jobs (BullMQ worker — needs REDIS_URL)
+pnpm --filter @progressio/web run worker      # run the BullMQ worker + register schedules
+pnpm --filter @progressio/web run scheduler   # (re)register repeatable jobs only
+
 # Quality / Build
 pnpm typecheck            # turbo run typecheck (all packages)
 pnpm lint                 # turbo run lint
@@ -86,8 +104,10 @@ pnpm build                # turbo run build
 ```
 DATABASE_URL=             # PostgreSQL connection string
 DIRECT_URL=               # Direct PostgreSQL connection (for migrations)
-NEXTAUTH_SECRET=          # Secret for JWT signing (openssl rand -base64 32)
-NEXTAUTH_URL=             # App URL (http://localhost:3000 for dev)
+REDIS_URL=                # Redis connection (refresh tokens, cache, rate limit, BullMQ)
+JWT_ACCESS_SECRET=        # HMAC secret for signing access-token JWTs (>=32 bytes; openssl rand -base64 32)
+ACCESS_TOKEN_TTL=         # Access token lifetime in seconds (optional, default 900 = 15 min)
+REFRESH_TOKEN_TTL=        # Refresh token lifetime in seconds (optional, default 604800 = 7 days)
 NEXT_PUBLIC_APP_URL=      # Public app URL
 ```
 

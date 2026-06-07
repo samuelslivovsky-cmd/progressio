@@ -1,8 +1,7 @@
 "use server";
 
-import bcrypt from "bcryptjs";
-import { prisma } from "@progressio/db";
-import { signIn } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { registerUser } from "@/lib/auth/register";
 
 export async function registerAction(data: {
   name: string;
@@ -10,35 +9,11 @@ export async function registerAction(data: {
   password: string;
   role: "TRAINER" | "CLIENT";
 }) {
-  const existing = await prisma.user.findUnique({
-    where: { email: data.email },
-  });
-  if (existing) {
-    return { error: "Účet s týmto emailom už existuje." };
+  const result = await registerUser(data);
+  if (!result.ok) {
+    return { error: result.error };
   }
 
-  const hashedPassword = await bcrypt.hash(data.password, 12);
-
-  const user = await prisma.user.create({
-    data: {
-      name: data.name,
-      email: data.email,
-      password: hashedPassword,
-    },
-  });
-
-  await prisma.profile.create({
-    data: {
-      userId: user.id,
-      name: data.name,
-      email: data.email,
-      role: data.role,
-    },
-  });
-
-  await signIn("credentials", {
-    email: data.email,
-    password: data.password,
-    redirectTo: data.role === "TRAINER" ? "/trainer" : "/client",
-  });
+  // registerUser already set the auth cookies. Redirect to the role landing.
+  redirect(data.role === "TRAINER" ? "/trainer" : "/client");
 }

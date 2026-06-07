@@ -26,7 +26,7 @@ export function RegisterForm() {
       setError(result.error);
       setLoading(false);
     }
-    // On success, signIn in the server action handles the redirect
+    // On success, the server action sets cookies and redirects.
   }
 
   return (

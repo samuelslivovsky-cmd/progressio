@@ -47,7 +47,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { signOut } from "next-auth/react";
 
 export const trainerBottomNav = [
   { title: "Dashboard", url: "/trainer", icon: LayoutDashboard },
@@ -95,7 +94,8 @@ export function AppSidebar({ profile }: AppSidebarProps) {
   const hamburgerNav = profile.role === "TRAINER" ? trainerHamburgerNav : clientHamburgerNav;
 
   async function handleSignOut() {
-    await signOut({ callbackUrl: "/login" });
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
   }
 
   return (

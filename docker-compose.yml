@@ -17,12 +17,43 @@ services:
       # Inside the compose network the DB is reachable as host "db".
       DATABASE_URL: postgresql://progressio:progressio@db:5432/progressio
       DIRECT_URL: postgresql://progressio:progressio@db:5432/progressio
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - .:/app
       # Keep container-installed deps / generated client / build cache.
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+      - /app/packages/db/node_modules
+      - /app/packages/config/node_modules
+      - /app/packages/db/src/generated
+
+  # BullMQ worker: runs the analytics/AI-summary processors + repeatable cron.
+  # Reuses the dev build + the same source mounts as `app` so it hot-reloads.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    command: sh -c "pnpm --filter @progressio/web run worker"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://progressio:progressio@db:5432/progressio
+      DIRECT_URL: postgresql://progressio:progressio@db:5432/progressio
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
       - /app/node_modules
       - /app/apps/web/node_modules
       - /app/apps/web/.next
@@ -43,6 +74,17 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U progressio"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5

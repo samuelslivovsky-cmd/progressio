@@ -50,10 +50,10 @@ jobs:
       - name: Build
         run: pnpm turbo run build
         env:
-          # Dummy values — build must not need a live DB, just a valid env shape.
+          # Dummy values — build must not need a live DB/Redis, just a valid env shape.
           DATABASE_URL: postgresql://user:pass@localhost:5432/db
           DIRECT_URL: postgresql://user:pass@localhost:5432/db
-          NEXTAUTH_SECRET: ci-dummy-secret
-          NEXTAUTH_URL: http://localhost:3000
+          REDIS_URL: redis://localhost:6379
+          JWT_ACCESS_SECRET: ci-dummy-secret-ci-dummy-secret-ci-dummy
           NEXT_PUBLIC_APP_URL: http://localhost:3000
           NEXT_TELEMETRY_DISABLED: "1"

@@ -1,27 +1,25 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { prisma } from "@progressio/db";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getCachedProfile } from "@/lib/cache";
 
 export async function requireAuth() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
-  });
+  const profile = await getCachedProfile(user.userId);
   if (!profile) redirect("/login");
 
-  return { session, profile };
+  return { user, profile };
 }
 
 export async function requireTrainer() {
-  const { session, profile } = await requireAuth();
+  const { user, profile } = await requireAuth();
   if (profile.role !== "TRAINER") redirect("/client");
-  return { session, profile };
+  return { user, profile };
 }
 
 export async function requireClient() {
-  const { session, profile } = await requireAuth();
+  const { user, profile } = await requireAuth();
   if (profile.role !== "CLIENT") redirect("/trainer");
-  return { session, profile };
+  return { user, profile };
 }

@@ -1,7 +1,32 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, clientProcedure } from "../trpc";
+import { rateLimit } from "@/lib/rate-limit";
 
-export const sendMessage = clientProcedure
+// Daily caps for AI/Claude-backed procedures, keyed per profile.
+const AI_WINDOW_SEC = 86_400; // 1 day
+const AI_DAILY_LIMIT_FREE = 5;
+const AI_DAILY_LIMIT_PAID = 50;
+
+// Reusable middleware for Claude-API-calling procedures: enforces a tiered
+// per-profile daily message limit. Paid AI tiers get a higher cap.
+const aiRateLimited = clientProcedure.use(async ({ ctx, next }) => {
+  const isPaid = ctx.profile.subscriptionTier !== "FREE";
+  const { ok } = await rateLimit({
+    key: `ai-chat:profile:${ctx.profile.id}`,
+    limit: isPaid ? AI_DAILY_LIMIT_PAID : AI_DAILY_LIMIT_FREE,
+    windowSec: AI_WINDOW_SEC,
+  });
+  if (!ok) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Dosiahol si denný limit AI správ.",
+    });
+  }
+  return next({ ctx });
+});
+
+export const sendMessage = aiRateLimited
   .input(z.object({ content: z.string().min(1).max(10000) }))
   .mutation(({ ctx, input }) =>
     ctx.prisma.aiChatMessage.create({
